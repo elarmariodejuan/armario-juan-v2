@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Armario de Juan">
+<title>El armario de Juan</title>
+<style>
+  :root {
+    --arena: #e9dfd0;
+    --beige: #f4eee4;
+    --blanco: #fbf9f4;
+    --salvia: #8a9a7b;
+    --salvia-osc: #6b7c5e;
+    --marron: #7a6450;
+    --texto: #3d342b;
+    --error: #a5483a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    background: var(--beige);
+    color: var(--texto);
+    min-height: 100vh;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  header {
+    background: var(--arena);
+    padding: 28px 20px 22px;
+    text-align: center;
+    border-bottom: 1px solid #d8ccb9;
+  }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: 2px; color: var(--marron); font-weight: 600; }
+  header p { margin: 6px 0 0; font-size: 14px; color: var(--marron); opacity: .8; }
+  main { max-width: 520px; margin: 0 auto; padding: 20px; }
+  .card {
+    background: var(--blanco);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(122,100,80,.10);
+  }
+  .card h2 { margin: 0 0 8px; font-size: 17px; }
+  .card p { margin: 6px 0; line-height: 1.45; font-size: 15px; }
+  button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 12px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--salvia);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  button:active { background: var(--salvia-osc); }
+  button.sec { background: var(--arena); color: var(--marron); }
+  button:disabled { opacity: .5; }
+  .estado { font-weight: 600; }
+  .ok { color: var(--salvia-osc); }
+  .mal { color: var(--error); }
+  pre {
+    background: var(--beige);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 12px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .oculto { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>EL ARMARIO DE JUAN</h1>
+  <p>Fase 1 · Conexión con Dropbox</p>
+</header>
+<main>
+  <div class="card">
+    <h2>Estado</h2>
+    <p id="estado" class="estado">Comprobando…</p>
+    <p id="detalle"></p>
+  </div>
+
+  <div class="card" id="bloqueConectar">
+    <h2>Conectar con Dropbox</h2>
+    <p>Pulsa el botón. Dropbox te pedirá permiso para que esta app use su propia carpeta privada. No ve nada más de tu Dropbox.</p>
+    <button id="btnConectar">Conectar con Dropbox</button>
+  </div>
+
+  <div class="card oculto" id="bloqueConectado">
+    <h2>Prueba de guardado</h2>
+    <p>Esta prueba crea (si no existe) el archivo <b>inventario.json</b> en tu carpeta de Dropbox y lo vuelve a leer para comprobar que todo funciona.</p>
+    <button id="btnProbar">Probar guardado en Dropbox</button>
+    <pre id="resultado" class="oculto"></pre>
+    <button id="btnSalir" class="sec">Desconectar</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // El App key de Dropbox NO es secreto. No hay ningún secreto en este archivo.
+  var APP_KEY = "2k5vjcyzln5gd96";
+  var REDIRECT_URI = "https://elarmariodejuan.github.io/armario-juan-v2/";
+  var RUTA_INVENTARIO = "/inventario.json";
+
+  var K_REFRESH = "armario_refresh_token";
+  var K_VERIFIER = "armario_pkce_verifier";
+  var K_STATE = "armario_pkce_state";
+
+  var accessToken = null;
+  var accessExpira = 0;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function guardar(clave, valor) { try { localStorage.setItem(clave, valor); } catch (e) {} }
+  function leer(clave) { try { return localStorage.getItem(clave); } catch (e) { return null; } }
+  function borrar(clave) { try { localStorage.removeItem(clave); } catch (e) {} }
+  function guardarSes(clave, valor) { try { sessionStorage.setItem(clave, valor); } catch (e) {} }
+  function leerSes(clave) { try { return sessionStorage.getItem(clave); } catch (e) { return null; } }
+  function borrarSes(clave) { try { sessionStorage.removeItem(clave); } catch (e) {} }
+
+  function mostrar(estado, detalle, clase) {
+    var el = $("estado");
+    el.textContent = estado;
+    el.className = "estado " + (clase || "");
+    $("detalle").textContent = detalle || "";
+  }
+
+  function vistaConectado(si) {
+    $("bloqueConectar").classList.toggle("oculto", si);
+    $("bloqueConectado").classList.toggle("oculto", !si);
+  }
+
+  // ---------- PKCE ----------
+  function aleatorio(longitud) {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    var bytes = new Uint8Array(longitud);
+    crypto.getRandomValues(bytes);
+    var s = "";
+    for (var i = 0; i < longitud; i++) s += chars[bytes[i] % chars.length];
+    return s;
+  }
+
+  function base64url(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  async function desafio(verifier) {
+    var datos = new TextEncoder().encode(verifier);
+    var hash = await crypto.subtle.digest("SHA-256", datos);
+    return base64url(hash);
+  }
+
+  async function iniciarConexion() {
+    if (!window.crypto || !crypto.subtle) {
+      mostrar("Este navegador no es compatible", "Abre la página desde Safari con la dirección https.", "mal");
+      return;
+    }
+    var verifier = aleatorio(64);
+    var state = aleatorio(24);
+    guardarSes(K_VERIFIER, verifier);
+    guardarSes(K_STATE, state);
+    var challenge = await desafio(verifier);
+    var url = "https://www.dropbox.com/oauth2/authorize"
+      + "?client_id=" + encodeURIComponent(APP_KEY)
+      + "&response_type=code"
+      + "&code_challenge=" + challenge
+      + "&code_challenge_method=S256"
+      + "&token_access_type=offline"
+      + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI)
+      + "&state=" + encodeURIComponent(state);
+    window.location.href = url;
+  }
+
+  async function pedirToken(parametros) {
+    var cuerpo = new URLSearchParams(parametros);
+    var resp = await fetch("https://api.dropboxapi.com/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: cuerpo.toString()
+    });
+    var datos = await resp.json().catch(function () { return {}; });
+    if (!resp.ok) {
+      var e = new Error(datos.error_description || datos.error || ("Error " + resp.status));
+      e.codigo = datos.error;
+      throw e;
+    }
+    return datos;
+  }
+
+  async function terminarConexion(code, state) {
+    var verifier = leerSes(K_VERIFIER);
+    var stateGuardado = leerSes(K_STATE);
+    borrarSes(K_VERIFIER);
+    borrarSes(K_STATE);
+    if (!verifier || !stateGuardado || state !== stateGuardado) {
+      throw new Error("La conexión no se pudo verificar. Vuelve a pulsar «Conectar con Dropbox».");
+    }
+    var datos = await pedirToken({
+      grant_type: "authorization_code",
+      code: code,
+      client_id: APP_KEY,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: verifier
+    });
+    accessToken = datos.access_token;
+    accessExpira = Date.now() + (datos.expires_in - 120) * 1000;
+    if (datos.refresh_token) guardar(K_REFRESH, datos.refresh_token);
+  }
+
+  async function obtenerToken() {
+    if (accessToken && Date.now() < accessExpira) return accessToken;
+    var refresh = leer(K_REFRESH);
+    if (!refresh) throw new Error("No hay sesión de Dropbox. Pulsa «Conectar con Dropbox».");
+    try {
+      var datos = await pedirToken({
+        grant_type: "refresh_token",
+        refresh_token: refresh,
+        client_id: APP_KEY
+      });
+      accessToken = datos.access_token;
+      accessExpira = Date.now() + (datos.expires_in - 120) * 1000;
+      return accessToken;
+    } catch (e) {
+      if (e.codigo === "invalid_grant") borrar(K_REFRESH);
+      throw e;
+    }
+  }
+
+  // ---------- Dropbox: leer y escribir ----------
+  async function subirJSON(ruta, objeto) {
+    var token = await obtenerToken();
+    var resp = await fetch("https://content.dropboxapi.com/2/files/upload", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/octet-stream",
+        "Dropbox-API-Arg": JSON.stringify({ path: ruta, mode: "overwrite", mute: true })
+      },
+      body: new Blob([JSON.stringify(objeto, null, 2)], { type: "application/octet-stream" })
+    });
+    if (!resp.ok) throw new Error("No se pudo guardar (" + resp.status + "): " + (await resp.text()));
+    return resp.json();
+  }
+
+  async function leerJSON(ruta) {
+    var token = await obtenerToken();
+    var resp = await fetch("https://content.dropboxapi.com/2/files/download", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token,
+        "Dropbox-API-Arg": JSON.stringify({ path: ruta })
+      }
+    });
+    if (resp.status === 409) return null; // el archivo no existe todavía
+    if (!resp.ok) throw new Error("No se pudo leer (" + resp.status + "): " + (await resp.text()));
+    return JSON.parse(await resp.text());
+  }
+
+  async function probarGuardado() {
+    var btn = $("btnProbar");
+    var salida = $("resultado");
+    btn.disabled = true;
+    salida.classList.add("oculto");
+    try {
+      var inv = await leerJSON(RUTA_INVENTARIO);
+      var mensaje;
+      if (inv === null) {
+        inv = {
+          version: 1,
+          creado: new Date().toISOString(),
+          prendas: [],
+          conjuntos: [],
+          calendario: [],
+          sugerencias: []
+        };
+        await subirJSON(RUTA_INVENTARIO, inv);
+        inv = await leerJSON(RUTA_INVENTARIO);
+        mensaje = "Archivo inventario.json creado y leído correctamente.";
+      } else {
+        mensaje = "El archivo inventario.json ya existía y se ha leído correctamente. No se ha modificado.";
+      }
+      salida.textContent = mensaje + "\n\n" + JSON.stringify(inv, null, 2);
+      salida.classList.remove("oculto");
+      mostrar("Conectado y funcionando", "Dropbox guarda y lee tus datos correctamente.", "ok");
+    } catch (e) {
+      salida.textContent = "Error: " + e.message;
+      salida.classList.remove("oculto");
+      mostrar("Hay un problema", e.message, "mal");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function desconectar() {
+    borrar(K_REFRESH);
+    accessToken = null;
+    accessExpira = 0;
+    vistaConectado(false);
+    mostrar("Desconectado", "Pulsa «Conectar con Dropbox» para volver a entrar.", "");
+  }
+
+  // ---------- Inicio ----------
+  async function iniciar() {
+    $("btnConectar").addEventListener("click", iniciarConexion);
+    $("btnProbar").addEventListener("click", probarGuardado);
+    $("btnSalir").addEventListener("click", desconectar);
+
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get("code");
+    var errorOAuth = params.get("error");
+
+    if (errorOAuth) {
+      history.replaceState(null, "", REDIRECT_URI);
+      mostrar("Dropbox no ha concedido el permiso", params.get("error_description") || errorOAuth, "mal");
+      vistaConectado(false);
+      return;
+    }
+
+    if (code) {
+      mostrar("Terminando la conexión…", "");
+      try {
+        await terminarConexion(code, params.get("state"));
+        history.replaceState(null, "", REDIRECT_URI);
+        vistaConectado(true);
+        mostrar("Conectado a Dropbox", "Pulsa «Probar guardado en Dropbox» para comprobar que todo funciona.", "ok");
+      } catch (e) {
+        history.replaceState(null, "", REDIRECT_URI);
+        vistaConectado(false);
+        mostrar("No se pudo conectar", e.message, "mal");
+      }
+      return;
+    }
+
+    if (leer(K_REFRESH)) {
+      try {
+        await obtenerToken();
+        vistaConectado(true);
+        mostrar("Conectado a Dropbox", "Sesión recuperada automáticamente.", "ok");
+      } catch (e) {
+        vistaConectado(false);
+        mostrar("Hay que volver a conectar", e.message, "mal");
+      }
+    } else {
+      vistaConectado(false);
+      mostrar("Sin conectar", "Pulsa «Conectar con Dropbox» para empezar.", "");
+    }
+  }
+
+  iniciar();
+})();
+</script>
+</body>
+</html>
