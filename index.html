@@ -891,6 +891,7 @@
     return d || 1.5;
   }
   function textoPrenda(p) { return norm((p.nombre || "") + " " + (p.tipo || "") + " " + (p.tejido || "")); }
+  function esVaquera(p) { return /vaquer|denim|tejan|\bjeans?\b/.test(textoPrenda(p)); }
   function esEstampada(p) { return /rayas|estampad|cuadros|lunares|flores|dibujo|print|vichy|tartan/.test(textoPrenda(p)); }
 
   function colorPar(a, b) {
@@ -989,6 +990,8 @@
     var ropaEst = [it.arriba, it.abajo, it.uno, it.capa].filter(Boolean).map(estiloDe);
     var maxEst = Math.max.apply(null, ropaEst);
     if (maxEst - Math.min.apply(null, ropaEst) >= 2) { ctx.rechEstilo++; return null; }
+    // Nunca dos prendas vaqueras juntas (vaquero con chaqueta vaquera)
+    if ([it.arriba, it.abajo, it.uno, it.capa].filter(function (p) { return p && esVaquera(p); }).length >= 2) { ctx.rechVaquero++; return null; }
     var penEstilo = (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) ? 0.12 : 0;
     var pares = paresDe(it), sw = 0, ss = 0;
     pares.forEach(function (x) { sw += x[2]; ss += x[2] * colorPar(x[0].color, x[1].color); });
@@ -1065,7 +1068,7 @@
   function generarConjuntos() {
     var inv = S.inv, hoy = new Date(), aj = inv.ajustes || {};
     var nivel = C.modo === "frio" ? 4 : C.modo === "calor" ? 1 : (C.nivel === "auto" ? NIVEL_AUTO[temporadaActual(hoy)] : parseInt(C.nivel, 10));
-    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0 };
+    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0 };
     var disp = inv.prendas.filter(function (p) {
       var ropa = p.categoria !== "Calzado" && p.categoria !== "Accesorios";
       return (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, aj) && !(nivel === 1 && p.abrigo === "calentito")
@@ -1108,6 +1111,7 @@
       }
       var msg;
       if (falta.length) msg = "No puedo formar un conjunto completo. Te falta " + falta.join(" y ") + " adecuada para este tiempo y esta talla (o un conjunto/mono).";
+      else if (ctx.rechVaquero > 0 && ctx.rechEstilo === 0) msg = "Con tus prendas, las únicas combinaciones posibles mezclarían dos prendas vaqueras, y prefiero no proponerlas. Una prenda de otro tejido o color lo resolvería.";
       else if (ctx.rechEstilo > 0) msg = "Las combinaciones posibles mezclarían estilos muy distintos (por ejemplo, algo arreglado con algo deportivo), así que no te propongo ninguna. Una prenda de diario sirve de puente. Si alguna prenda tiene mal el estilo, corrígelo en Editar › Más detalles.";
       else msg = "No he encontrado ninguna combinación válida con tus prendas para este tiempo. Puede que las tallas no sean compatibles entre sí.";
       return { vacio: msg, nivel: nivel };
