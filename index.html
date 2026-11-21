@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Armario de Juan">
+<meta name="theme-color" content="#e9dfd0">
 <title>El armario de Juan</title>
 <style>
   :root {
@@ -13,92 +14,236 @@
     --blanco: #fbf9f4;
     --salvia: #8a9a7b;
     --salvia-osc: #6b7c5e;
+    --salvia-claro: #dfe5d8;
     --marron: #7a6450;
     --texto: #3d342b;
+    --suave: #8c7e70;
+    --linea: #d8ccb9;
     --error: #a5483a;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
     background: var(--beige);
     color: var(--texto);
     min-height: 100vh;
-    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   }
   header {
     background: var(--arena);
-    padding: 28px 20px 22px;
+    padding: calc(env(safe-area-inset-top) + 16px) 20px 14px;
     text-align: center;
-    border-bottom: 1px solid #d8ccb9;
+    border-bottom: 1px solid var(--linea);
+    position: sticky; top: 0; z-index: 20;
   }
-  header h1 { margin: 0; font-size: 22px; letter-spacing: 2px; color: var(--marron); font-weight: 600; }
-  header p { margin: 6px 0 0; font-size: 14px; color: var(--marron); opacity: .8; }
-  main { max-width: 520px; margin: 0 auto; padding: 20px; }
-  .card {
-    background: var(--blanco);
-    border-radius: 18px;
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: 0 2px 10px rgba(122,100,80,.10);
-  }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: 2.5px; color: var(--marron); font-weight: 600; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); }
+
+  .card { background: var(--blanco); border-radius: 18px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(122,100,80,.10); }
   .card h2 { margin: 0 0 8px; font-size: 17px; }
   .card p { margin: 6px 0; line-height: 1.45; font-size: 15px; }
-  button {
-    width: 100%;
-    padding: 15px;
-    margin-top: 12px;
-    border: 0;
-    border-radius: 14px;
-    background: var(--salvia);
-    color: #fff;
-    font-size: 16px;
-    font-weight: 600;
+
+  button { font-family: inherit; }
+  .btn {
+    width: 100%; padding: 15px; margin-top: 12px; border: 0; border-radius: 14px;
+    background: var(--salvia); color: #fff; font-size: 16px; font-weight: 600;
   }
-  button:active { background: var(--salvia-osc); }
-  button.sec { background: var(--arena); color: var(--marron); }
-  button:disabled { opacity: .5; }
-  .estado { font-weight: 600; }
-  .ok { color: var(--salvia-osc); }
-  .mal { color: var(--error); }
-  pre {
-    background: var(--beige);
-    border-radius: 10px;
-    padding: 10px;
-    font-size: 12px;
-    overflow-x: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
+  .btn:active { background: var(--salvia-osc); }
+  .btn.sec { background: var(--arena); color: var(--marron); }
+  .btn.peligro { background: #f0dcd7; color: var(--error); }
+  .btn:disabled { opacity: .55; }
+
+  /* Pestañas inferiores */
+  nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--blanco); border-top: 1px solid var(--linea);
+    display: flex; padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
   }
-  .oculto { display: none; }
+  nav button {
+    flex: 1; background: none; border: 0; color: var(--suave);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10.5px; padding: 4px 0; min-width: 0;
+  }
+  nav button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  nav button.activa { color: var(--salvia-osc); font-weight: 600; }
+  nav button.pronto { opacity: .45; }
+
+  /* Armario */
+  .buscador { width: 100%; padding: 13px 14px; border: 1px solid var(--linea); border-radius: 14px; background: var(--blanco); font-size: 16px; color: var(--texto); }
+  details.filtros { margin: 10px 0 6px; background: var(--blanco); border-radius: 14px; border: 1px solid var(--linea); }
+  details.filtros summary { padding: 12px 14px; font-size: 15px; color: var(--marron); font-weight: 600; list-style: none; }
+  details.filtros summary::-webkit-details-marker { display: none; }
+  .filtros-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 14px 14px; }
+  select, input[type=text] {
+    width: 100%; padding: 12px; border: 1px solid var(--linea); border-radius: 12px;
+    background: var(--blanco); font-size: 16px; color: var(--texto); font-family: inherit;
+  }
+  .contador { font-size: 13px; color: var(--suave); margin: 8px 2px 10px; display: flex; justify-content: space-between; align-items: center; }
+  .linkbtn { background: none; border: 0; color: var(--salvia-osc); font-size: 13px; font-weight: 600; padding: 4px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  .tarjeta { background: var(--blanco); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 10px rgba(122,100,80,.10); }
+  .tarjeta .foto { position: relative; aspect-ratio: 1 / 1; background: var(--arena); }
+  .tarjeta .foto img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
+  .tarjeta .foto img.lista { opacity: 1; }
+  .tarjeta .info { padding: 10px 12px 12px; }
+  .tarjeta .nom { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tarjeta .meta { font-size: 12px; color: var(--suave); margin: 2px 0 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip { display: inline-block; font-size: 11.5px; padding: 3px 9px; border-radius: 20px; background: var(--salvia-claro); color: var(--salvia-osc); font-weight: 600; margin: 0 4px 4px 0; }
+  .chip.aviso { background: #f1e4cf; color: #8a6a3a; }
+  .fav {
+    position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%;
+    border: 0; background: rgba(251,249,244,.88); color: #c9bfb2; font-size: 18px; line-height: 1;
+  }
+  .fav.on { color: #c0605a; }
+  .vacio { text-align: center; padding: 40px 20px; color: var(--suave); line-height: 1.5; }
+
+  /* Formulario */
+  .campo { margin-bottom: 16px; }
+  .campo > label, .etq { display: block; font-size: 14px; font-weight: 600; color: var(--marron); margin-bottom: 6px; }
+  .req { color: var(--error); }
+  .zona-foto {
+    display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;
+    border: 2px dashed var(--linea); border-radius: 18px; background: var(--blanco);
+    min-height: 200px; overflow: hidden; color: var(--suave); font-size: 15px; position: relative;
+  }
+  .zona-foto img { width: 100%; max-height: 360px; object-fit: contain; display: block; background: var(--arena); }
+  .zona-foto input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 0; }
+  .zona-foto .plus { font-size: 34px; color: var(--salvia); line-height: 1; margin-bottom: 6px; }
+  .cambiar { font-size: 13px; color: var(--salvia-osc); font-weight: 600; margin-top: 6px; }
+  details.mas { background: var(--blanco); border-radius: 14px; border: 1px solid var(--linea); margin-bottom: 14px; }
+  details.mas summary { padding: 14px; font-size: 15px; font-weight: 600; color: var(--marron); list-style: none; }
+  details.mas summary::-webkit-details-marker { display: none; }
+  details.mas .dentro { padding: 0 14px 6px; }
+  .seg { display: flex; gap: 8px; flex-wrap: wrap; }
+  .seg button { flex: 1; min-width: 80px; padding: 11px 6px; border-radius: 12px; border: 1px solid var(--linea); background: var(--blanco); color: var(--texto); font-size: 14px; }
+  .seg button.on { background: var(--salvia); border-color: var(--salvia); color: #fff; font-weight: 600; }
+  .colores { display: flex; flex-wrap: wrap; gap: 10px; }
+  .colores button { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--linea); position: relative; padding: 0; }
+  .colores button.on { border-color: var(--salvia-osc); box-shadow: 0 0 0 3px var(--salvia-claro); }
+  .colores button.on::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; color: #fff; text-shadow: 0 0 3px rgba(0,0,0,.55); }
+  .color-nombre { font-size: 12.5px; color: var(--suave); margin-top: 6px; min-height: 16px; }
+  .error { color: var(--error); font-size: 14px; margin: 8px 0 0; min-height: 18px; }
+
+  /* Hoja de detalle */
+  .fondo { position: fixed; inset: 0; background: rgba(61,52,43,.45); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+  .hoja { background: var(--beige); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 22px 22px 0 0; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
+  .hoja .grande { width: 100%; aspect-ratio: 1 / 1; background: var(--arena); border-radius: 16px; overflow: hidden; }
+  .hoja .grande img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .hoja h3 { margin: 14px 0 6px; font-size: 20px; }
+  .ficha { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14.5px; margin: 8px 0 4px; }
+  .ficha dt { color: var(--suave); }
+  .ficha dd { margin: 0; }
+  .punto { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 1px solid var(--linea); vertical-align: -2px; margin-right: 5px; }
+
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom)); background: var(--texto); color: #fff; padding: 11px 18px; border-radius: 24px; font-size: 14.5px; z-index: 80; max-width: 88vw; text-align: center; }
+  .estado-ok { color: var(--salvia-osc); font-weight: 600; }
+  .estado-mal { color: var(--error); font-weight: 600; }
+  .pie { text-align: center; margin-top: 26px; }
 </style>
 </head>
 <body>
-<header>
-  <h1>EL ARMARIO DE JUAN</h1>
-  <p>Fase 1 · Conexión con Dropbox</p>
-</header>
+<header><h1>EL ARMARIO DE JUAN</h1></header>
+
 <main>
-  <div class="card">
-    <h2>Estado</h2>
-    <p id="estado" class="estado">Comprobando…</p>
-    <p id="detalle"></p>
-  </div>
+  <!-- Pantalla de conexión -->
+  <section id="vConectar" hidden>
+    <div class="card">
+      <h2>Conectar con Dropbox</h2>
+      <p id="msgConexion">Pulsa el botón. Dropbox te pedirá permiso para que esta app use su propia carpeta privada. No ve nada más de tu Dropbox.</p>
+      <button class="btn" id="btnConectar">Conectar con Dropbox</button>
+    </div>
+  </section>
 
-  <div class="card" id="bloqueConectar">
-    <h2>Conectar con Dropbox</h2>
-    <p>Pulsa el botón. Dropbox te pedirá permiso para que esta app use su propia carpeta privada. No ve nada más de tu Dropbox.</p>
-    <button id="btnConectar">Conectar con Dropbox</button>
-  </div>
+  <section id="vCargando" hidden>
+    <div class="card"><p id="txtCargando">Cargando…</p></div>
+  </section>
 
-  <div class="card oculto" id="bloqueConectado">
-    <h2>Prueba de guardado</h2>
-    <p>Esta prueba crea (si no existe) el archivo <b>inventario.json</b> en tu carpeta de Dropbox y lo vuelve a leer para comprobar que todo funciona.</p>
-    <button id="btnProbar">Probar guardado en Dropbox</button>
-    <pre id="resultado" class="oculto"></pre>
-    <button id="btnSalir" class="sec">Desconectar</button>
-  </div>
+  <!-- Mi armario -->
+  <section id="vArmario" hidden>
+    <input class="buscador" id="busca" type="search" placeholder="Buscar por nombre…" autocomplete="off">
+    <details class="filtros" id="filtros">
+      <summary id="resumenFiltros">Filtros</summary>
+      <div class="filtros-grid">
+        <select id="fCat"></select>
+        <select id="fTalla"></select>
+        <select id="fColor"></select>
+        <select id="fTemp"></select>
+        <select id="fFav"><option value="">Todas</option><option value="1">Solo favoritas</option></select>
+        <button class="btn sec" id="btnLimpiar" style="margin-top:0;padding:12px">Quitar filtros</button>
+      </div>
+    </details>
+    <div class="contador"><span id="contador"></span></div>
+    <div class="grid" id="grid"></div>
+    <div class="vacio" id="vacio" hidden>Todavía no hay prendas.<br>Pulsa <b>Añadir</b> abajo para hacer la primera foto.</div>
+    <div class="vacio" id="sinResultados" hidden>Ninguna prenda coincide con la búsqueda o los filtros.</div>
+    <div class="pie"><button class="linkbtn" id="btnSalir">Desconectar de Dropbox</button></div>
+  </section>
+
+  <!-- Añadir / editar prenda -->
+  <section id="vAnadir" hidden>
+    <h2 id="tituloForm" style="margin:4px 2px 14px;font-size:20px">Añadir prenda</h2>
+
+    <div class="campo">
+      <label>Foto <span class="req">*</span></label>
+      <div class="zona-foto" id="zonaFoto">
+        <div id="foto-vacia"><div class="plus">+</div>Toca para hacer una foto<br>o elegir una de la galería</div>
+        <img id="fotoPrev" alt="" hidden>
+        <input type="file" id="fFile" accept="image/*">
+      </div>
+      <div class="cambiar" id="cambiarFoto" hidden>Toca la foto para cambiarla</div>
+    </div>
+
+    <div class="campo">
+      <label for="fNombre">Nombre <span class="req">*</span></label>
+      <input type="text" id="fNombre" placeholder="Ej.: Camiseta blanca de rayas" autocomplete="off" maxlength="80">
+    </div>
+
+    <div class="campo">
+      <label for="fCategoria">Categoría <span class="req">*</span></label>
+      <select id="fCategoria"></select>
+      <input type="text" id="fCatNueva" placeholder="Nombre de la nueva categoría" style="margin-top:8px" hidden maxlength="40">
+    </div>
+
+    <details class="mas" id="masDetalles">
+      <summary>Más detalles (opcional)</summary>
+      <div class="dentro">
+        <div class="campo"><label for="fTipo">Tipo de prenda</label><input type="text" id="fTipo" placeholder="Ej.: manga larga, bermuda, zapatillas" maxlength="60"></div>
+        <div class="campo">
+          <label for="fTalla">Talla</label>
+          <select id="fTalla2"></select>
+          <input type="text" id="fTallaOtra" placeholder="Escribe la talla" style="margin-top:8px" hidden maxlength="20">
+        </div>
+        <div class="campo"><span class="etq">Color principal</span><div class="colores" id="coloresP"></div><div class="color-nombre" id="nomColorP"></div></div>
+        <div class="campo"><span class="etq">Colores secundarios</span><div class="colores" id="coloresS"></div></div>
+        <div class="campo"><label for="fTemp2">Temporada</label><select id="fTemp2"></select></div>
+        <div class="campo"><span class="etq">Nivel de abrigo</span><div class="seg" id="segAbrigo"></div></div>
+        <div class="campo"><label for="fTejido">Tejido</label><input type="text" id="fTejido" placeholder="Ej.: algodón, lana, vaquero" maxlength="40"></div>
+        <div class="campo"><label for="fEstado">Estado</label><select id="fEstado"></select></div>
+        <div class="campo"><span class="etq">Favorita</span><div class="seg"><button type="button" id="btnFavForm">♥ Marcar como favorita</button></div></div>
+      </div>
+    </details>
+
+    <p class="error" id="errForm"></p>
+    <button class="btn" id="btnGuardar">Guardar prenda</button>
+    <button class="btn sec" id="btnCancelar" hidden>Cancelar</button>
+  </section>
 </main>
+
+<nav id="nav" hidden>
+  <button data-tab="armario"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18M9 11v2M15 11v2"/></svg>Armario</button>
+  <button data-tab="anadir"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Añadir</button>
+  <button data-tab="conjuntos" class="pronto" data-fase="3"><svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 1 2 2c-1 .5-2 1-2 2v1M3 19l9-6 9 6z"/></svg>Conjuntos</button>
+  <button data-tab="completar" class="pronto" data-fase="6"><svg viewBox="0 0 24 24"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg>Completar</button>
+  <button data-tab="calendario" class="pronto" data-fase="5"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Calendario</button>
+  <button data-tab="favoritos" class="pronto" data-fase="5"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Favoritos</button>
+</nav>
+
+<div class="fondo" id="fondo" hidden><div class="hoja" id="hoja"></div></div>
+<div class="toast" id="toast" hidden></div>
 
 <script>
 (function () {
@@ -107,70 +252,79 @@
   // El App key de Dropbox NO es secreto. No hay ningún secreto en este archivo.
   var APP_KEY = "2k5vjcyzln5gd96";
   var REDIRECT_URI = "https://elarmariodejuan.github.io/armario-juan-v2/";
-  var RUTA_INVENTARIO = "/inventario.json";
+  var RUTA_INV = "/inventario.json";
 
   var K_REFRESH = "armario_refresh_token";
   var K_VERIFIER = "armario_pkce_verifier";
   var K_STATE = "armario_pkce_state";
 
-  var accessToken = null;
-  var accessExpira = 0;
+  var CATS_BASE = ["Camisetas y partes de arriba", "Pantalones y partes de abajo", "Sudaderas", "Jerséis", "Camisas",
+    "Conjuntos", "Monos", "Vestidos", "Abrigos y chaquetas", "Chalecos", "Pijamas", "Calzado", "Accesorios"];
+  var TALLAS = ["0-3 meses", "3-6 meses", "6-9 meses", "9-12 meses", "12-18 meses", "18-24 meses",
+    "2 años", "3 años", "4 años", "5 años", "6 años", "7 años", "8 años", "9 años", "10 años", "11 años", "12 años",
+    "Calzado 18", "Calzado 19", "Calzado 20", "Calzado 21", "Calzado 22", "Calzado 23", "Calzado 24", "Calzado 25",
+    "Calzado 26", "Calzado 27", "Calzado 28", "Calzado 29", "Calzado 30", "Calzado 31", "Calzado 32", "Calzado 33", "Calzado 34", "Talla única"];
+  var TEMPORADAS = ["primavera", "verano", "otoño", "invierno", "todo el año"];
+  var ABRIGOS = ["ligero", "medio", "calentito"];
+  var ESTADOS = ["disponible", "guardada", "fuera de temporada"];
+  var COLORES = [
+    ["Blanco", "#ffffff"], ["Crudo", "#f1e9da"], ["Beige", "#d9c7a6"], ["Arena", "#c8b08a"], ["Marrón", "#7a5a3f"],
+    ["Negro", "#2b2926"], ["Gris", "#9a9a98"], ["Azul marino", "#26385c"], ["Azul", "#4a72b0"], ["Celeste", "#9cc3e0"],
+    ["Verde salvia", "#8a9a7b"], ["Verde", "#4f8a55"], ["Verde oscuro", "#2f4a35"], ["Amarillo", "#e8cf4f"],
+    ["Mostaza", "#c9992b"], ["Naranja", "#e0833a"], ["Rojo", "#c0453b"], ["Burdeos", "#6e2a36"],
+    ["Rosa", "#e6a9b3"], ["Morado", "#8a6aa8"], ["Multicolor", "conic-gradient(#c0453b,#e8cf4f,#4f8a55,#4a72b0,#8a6aa8,#c0453b)"]
+  ];
+
+  var S = { inv: null, tab: "armario", editId: null, filtros: { texto: "", cat: "", talla: "", color: "", temp: "", fav: "" } };
+  var F = null; // estado del formulario
 
   var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function norm(s) { return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim(); }
+  function colorHex(n) { for (var i = 0; i < COLORES.length; i++) if (COLORES[i][0] === n) return COLORES[i][1]; return "#ccc"; }
 
-  function guardar(clave, valor) { try { localStorage.setItem(clave, valor); } catch (e) {} }
-  function leer(clave) { try { return localStorage.getItem(clave); } catch (e) { return null; } }
-  function borrar(clave) { try { localStorage.removeItem(clave); } catch (e) {} }
-  function guardarSes(clave, valor) { try { sessionStorage.setItem(clave, valor); } catch (e) {} }
-  function leerSes(clave) { try { return sessionStorage.getItem(clave); } catch (e) { return null; } }
-  function borrarSes(clave) { try { sessionStorage.removeItem(clave); } catch (e) {} }
+  function guardarLS(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function leerLS(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function borrarLS(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  function guardarSS(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+  function leerSS(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function borrarSS(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
 
-  function mostrar(estado, detalle, clase) {
-    var el = $("estado");
-    el.textContent = estado;
-    el.className = "estado " + (clase || "");
-    $("detalle").textContent = detalle || "";
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $("toast");
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 2800);
   }
 
-  function vistaConectado(si) {
-    $("bloqueConectar").classList.toggle("oculto", si);
-    $("bloqueConectado").classList.toggle("oculto", !si);
-  }
+  // ================== OAuth 2.0 con PKCE ==================
+  var accessToken = null, accessExpira = 0, refrescando = null;
 
-  // ---------- PKCE ----------
-  function aleatorio(longitud) {
+  function aleatorio(n) {
     var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-    var bytes = new Uint8Array(longitud);
-    crypto.getRandomValues(bytes);
-    var s = "";
-    for (var i = 0; i < longitud; i++) s += chars[bytes[i] % chars.length];
+    var b = new Uint8Array(n); crypto.getRandomValues(b);
+    var s = ""; for (var i = 0; i < n; i++) s += chars[b[i] % chars.length];
     return s;
   }
-
-  function base64url(buffer) {
-    var bytes = new Uint8Array(buffer);
-    var bin = "";
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  function base64url(buf) {
+    var b = new Uint8Array(buf), s = "";
+    for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
-
-  async function desafio(verifier) {
-    var datos = new TextEncoder().encode(verifier);
-    var hash = await crypto.subtle.digest("SHA-256", datos);
-    return base64url(hash);
+  async function desafio(v) {
+    return base64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)));
   }
 
   async function iniciarConexion() {
     if (!window.crypto || !crypto.subtle) {
-      mostrar("Este navegador no es compatible", "Abre la página desde Safari con la dirección https.", "mal");
+      $("msgConexion").textContent = "Este navegador no es compatible. Abre la página desde Safari con la dirección https.";
       return;
     }
-    var verifier = aleatorio(64);
-    var state = aleatorio(24);
-    guardarSes(K_VERIFIER, verifier);
-    guardarSes(K_STATE, state);
+    var verifier = aleatorio(64), state = aleatorio(24);
+    guardarSS(K_VERIFIER, verifier); guardarSS(K_STATE, state);
     var challenge = await desafio(verifier);
-    var url = "https://www.dropbox.com/oauth2/authorize"
+    window.location.href = "https://www.dropbox.com/oauth2/authorize"
       + "?client_id=" + encodeURIComponent(APP_KEY)
       + "&response_type=code"
       + "&code_challenge=" + challenge
@@ -178,182 +332,581 @@
       + "&token_access_type=offline"
       + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI)
       + "&state=" + encodeURIComponent(state);
-    window.location.href = url;
   }
 
   async function pedirToken(parametros) {
-    var cuerpo = new URLSearchParams(parametros);
     var resp = await fetch("https://api.dropboxapi.com/oauth2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: cuerpo.toString()
+      body: new URLSearchParams(parametros).toString()
     });
     var datos = await resp.json().catch(function () { return {}; });
     if (!resp.ok) {
       var e = new Error(datos.error_description || datos.error || ("Error " + resp.status));
-      e.codigo = datos.error;
-      throw e;
+      e.codigo = datos.error; throw e;
     }
     return datos;
   }
 
   async function terminarConexion(code, state) {
-    var verifier = leerSes(K_VERIFIER);
-    var stateGuardado = leerSes(K_STATE);
-    borrarSes(K_VERIFIER);
-    borrarSes(K_STATE);
-    if (!verifier || !stateGuardado || state !== stateGuardado) {
+    var verifier = leerSS(K_VERIFIER), guardado = leerSS(K_STATE);
+    borrarSS(K_VERIFIER); borrarSS(K_STATE);
+    if (!verifier || !guardado || state !== guardado) {
       throw new Error("La conexión no se pudo verificar. Vuelve a pulsar «Conectar con Dropbox».");
     }
-    var datos = await pedirToken({
-      grant_type: "authorization_code",
-      code: code,
-      client_id: APP_KEY,
-      redirect_uri: REDIRECT_URI,
-      code_verifier: verifier
-    });
-    accessToken = datos.access_token;
-    accessExpira = Date.now() + (datos.expires_in - 120) * 1000;
-    if (datos.refresh_token) guardar(K_REFRESH, datos.refresh_token);
+    var d = await pedirToken({ grant_type: "authorization_code", code: code, client_id: APP_KEY, redirect_uri: REDIRECT_URI, code_verifier: verifier });
+    accessToken = d.access_token; accessExpira = Date.now() + (d.expires_in - 120) * 1000;
+    if (d.refresh_token) guardarLS(K_REFRESH, d.refresh_token);
   }
 
   async function obtenerToken() {
     if (accessToken && Date.now() < accessExpira) return accessToken;
-    var refresh = leer(K_REFRESH);
+    if (refrescando) return refrescando;
+    var refresh = leerLS(K_REFRESH);
     if (!refresh) throw new Error("No hay sesión de Dropbox. Pulsa «Conectar con Dropbox».");
-    try {
-      var datos = await pedirToken({
-        grant_type: "refresh_token",
-        refresh_token: refresh,
-        client_id: APP_KEY
+    refrescando = (async function () {
+      try {
+        var d = await pedirToken({ grant_type: "refresh_token", refresh_token: refresh, client_id: APP_KEY });
+        accessToken = d.access_token; accessExpira = Date.now() + (d.expires_in - 120) * 1000;
+        return accessToken;
+      } catch (e) {
+        if (e.codigo === "invalid_grant") borrarLS(K_REFRESH);
+        throw e;
+      } finally { refrescando = null; }
+    })();
+    return refrescando;
+  }
+
+  // ================== Dropbox: archivos ==================
+  async function dbx(url, opts) {
+    opts.headers = opts.headers || {};
+    opts.headers["Authorization"] = "Bearer " + (await obtenerToken());
+    var r = await fetch(url, opts);
+    if (r.status === 401) {
+      accessToken = null;
+      opts.headers["Authorization"] = "Bearer " + (await obtenerToken());
+      r = await fetch(url, opts);
+    }
+    return r;
+  }
+
+  async function subir(ruta, blob) {
+    var r = await dbx("https://content.dropboxapi.com/2/files/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream", "Dropbox-API-Arg": JSON.stringify({ path: ruta, mode: "overwrite", mute: true }) },
+      body: blob
+    });
+    if (!r.ok) throw new Error("No se pudo guardar en Dropbox (" + r.status + ")");
+  }
+
+  async function descargar(ruta) {
+    var r = await dbx("https://content.dropboxapi.com/2/files/download", {
+      method: "POST", headers: { "Dropbox-API-Arg": JSON.stringify({ path: ruta }) }
+    });
+    if (r.status === 409) {
+      var t = await r.text();
+      if (t.indexOf("not_found") >= 0) return null;
+      throw new Error("Dropbox no pudo leer el archivo");
+    }
+    if (!r.ok) throw new Error("No se pudo leer de Dropbox (" + r.status + ")");
+    return r.blob();
+  }
+
+  async function borrarArchivo(ruta) {
+    var r = await dbx("https://api.dropboxapi.com/2/files/delete_v2", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: ruta })
+    });
+    if (!r.ok && r.status !== 409) throw new Error("No se pudo borrar (" + r.status + ")");
+  }
+
+  // ================== Inventario ==================
+  function inventarioNuevo() {
+    return { version: 1, creado: new Date().toISOString(), categoriasExtra: [], prendas: [], conjuntos: [], calendario: [], sugerencias: [] };
+  }
+  function normalizarInv(inv) {
+    ["prendas", "conjuntos", "calendario", "sugerencias", "categoriasExtra"].forEach(function (k) { if (!Array.isArray(inv[k])) inv[k] = []; });
+    return inv;
+  }
+  async function leerInventario() {
+    var b = await descargar(RUTA_INV);
+    if (!b) return inventarioNuevo();
+    return normalizarInv(JSON.parse(await b.text()));
+  }
+
+  // Cada cambio: lee el inventario más reciente de Dropbox, aplica el cambio y lo guarda.
+  // Se hacen de uno en uno para que dos cambios seguidos no se pisen.
+  var colaGuardado = Promise.resolve();
+  function modificarInv(fn) {
+    var tarea = colaGuardado.then(async function () {
+      var inv = await leerInventario();
+      fn(inv);
+      inv.modificado = new Date().toISOString();
+      await subir(RUTA_INV, new Blob([JSON.stringify(inv, null, 1)], { type: "application/octet-stream" }));
+      S.inv = inv;
+      return inv;
+    });
+    colaGuardado = tarea.catch(function () {});
+    return tarea;
+  }
+
+  function todasCategorias() {
+    var extra = (S.inv && S.inv.categoriasExtra) || [];
+    return CATS_BASE.concat(extra);
+  }
+
+  // ================== Fotos ==================
+  function cargarImagen(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () { res({ img: img, url: url }); };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error("No se pudo leer la foto. Prueba con otra.")); };
+      img.src = url;
+    });
+  }
+  function aJpeg(img, maxLado, calidad) {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var f = Math.min(1, maxLado / Math.max(w, h));
+    w = Math.max(1, Math.round(w * f)); h = Math.max(1, Math.round(h * f));
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+    return new Promise(function (res, rej) {
+      c.toBlob(function (b) { b ? res(b) : rej(new Error("No se pudo comprimir la foto")); }, "image/jpeg", calidad);
+    });
+  }
+
+  var miniCache = {};
+  var activos = 0, cola = [];
+  function encolar(fn) { cola.push(fn); siguienteCola(); }
+  function siguienteCola() {
+    while (activos < 4 && cola.length) {
+      var f = cola.shift(); activos++;
+      f().catch(function () {}).then(function () { activos--; siguienteCola(); });
+    }
+  }
+  async function urlMini(p) {
+    if (miniCache[p.id]) return miniCache[p.id];
+    var b = await descargar(p.miniatura);
+    if (!b) return null;
+    miniCache[p.id] = URL.createObjectURL(b);
+    return miniCache[p.id];
+  }
+  function olvidarMini(id) { if (miniCache[id]) { URL.revokeObjectURL(miniCache[id]); delete miniCache[id]; } }
+
+  var observador = null;
+  function observarImagenes() {
+    if (observador) observador.disconnect();
+    var imgs = $("grid").querySelectorAll("img[data-mini]");
+    function cargar(img) {
+      var p = S.inv.prendas.find(function (x) { return x.id === img.getAttribute("data-mini"); });
+      if (!p) return;
+      encolar(async function () {
+        var u = await urlMini(p);
+        if (u) { img.src = u; img.classList.add("lista"); }
       });
-      accessToken = datos.access_token;
-      accessExpira = Date.now() + (datos.expires_in - 120) * 1000;
-      return accessToken;
+    }
+    if (!("IntersectionObserver" in window)) { imgs.forEach(cargar); return; }
+    observador = new IntersectionObserver(function (entradas) {
+      entradas.forEach(function (e) { if (e.isIntersecting) { observador.unobserve(e.target); cargar(e.target); } });
+    }, { rootMargin: "300px" });
+    imgs.forEach(function (i) { observador.observe(i); });
+  }
+
+  // ================== Navegación ==================
+  function ocultarTodo() {
+    ["vConectar", "vCargando", "vArmario", "vAnadir"].forEach(function (id) { $(id).hidden = true; });
+  }
+  function pantalla(nombre) {
+    ocultarTodo();
+    $("nav").hidden = !(nombre === "vArmario" || nombre === "vAnadir");
+    $(nombre).hidden = false;
+    window.scrollTo(0, 0);
+  }
+  function irA(tab) {
+    S.tab = tab;
+    document.querySelectorAll("#nav button").forEach(function (b) { b.classList.toggle("activa", b.getAttribute("data-tab") === tab); });
+    if (tab === "armario") { pantalla("vArmario"); document.querySelectorAll("#nav button")[0].classList.add("activa"); renderArmario(); }
+    if (tab === "anadir") { if (!S.editId) prepararFormulario(null); pantalla("vAnadir"); document.querySelectorAll("#nav button")[1].classList.add("activa"); }
+  }
+
+  // ================== Mi armario ==================
+  function llenarSelect(sel, primera, valores, actual) {
+    var h = '<option value="">' + esc(primera) + "</option>";
+    valores.forEach(function (v) { h += '<option value="' + esc(v) + '"' + (v === actual ? " selected" : "") + ">" + esc(v) + "</option>"; });
+    sel.innerHTML = h;
+  }
+  function prepararFiltros() {
+    var f = S.filtros, prendas = S.inv.prendas;
+    llenarSelect($("fCat"), "Todas las categorías", todasCategorias(), f.cat);
+    var tallas = []; prendas.forEach(function (p) { if (p.talla && tallas.indexOf(p.talla) < 0) tallas.push(p.talla); });
+    tallas.sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); });
+    llenarSelect($("fTalla"), "Todas las tallas", tallas, f.talla);
+    var colores = COLORES.map(function (c) { return c[0]; });
+    llenarSelect($("fColor"), "Todos los colores", colores, f.color);
+    llenarSelect($("fTemp"), "Todas las temporadas", TEMPORADAS, f.temp);
+    $("fFav").value = f.fav;
+  }
+  function filtrar(lista) {
+    var f = S.filtros, t = norm(f.texto);
+    return lista.filter(function (p) {
+      if (t && norm(p.nombre).indexOf(t) < 0 && norm(p.tipo).indexOf(t) < 0) return false;
+      if (f.cat && p.categoria !== f.cat) return false;
+      if (f.talla && p.talla !== f.talla) return false;
+      if (f.color && p.color !== f.color && (p.colores2 || []).indexOf(f.color) < 0) return false;
+      if (f.temp && p.temporada !== f.temp && p.temporada !== "todo el año") return false;
+      if (f.fav && !p.favorito) return false;
+      return true;
+    });
+  }
+  function filtrosActivos() {
+    var f = S.filtros, n = 0;
+    ["cat", "talla", "color", "temp", "fav"].forEach(function (k) { if (f[k]) n++; });
+    return n;
+  }
+  function renderArmario() {
+    var prendas = S.inv.prendas, lista = filtrar(prendas), n = filtrosActivos();
+    $("resumenFiltros").textContent = n ? "Filtros (" + n + " activos)" : "Filtros";
+    $("contador").textContent = lista.length + (lista.length === 1 ? " prenda" : " prendas") + (lista.length !== prendas.length ? " de " + prendas.length : "");
+    $("vacio").hidden = prendas.length > 0;
+    $("sinResultados").hidden = !(prendas.length > 0 && lista.length === 0);
+    $("contador").parentNode.hidden = prendas.length === 0;
+    var g = $("grid"); g.innerHTML = "";
+    lista.forEach(function (p) {
+      var d = document.createElement("div");
+      d.className = "tarjeta"; d.setAttribute("data-id", p.id);
+      d.innerHTML = '<div class="foto"><img alt="" data-mini="' + esc(p.id) + '">'
+        + '<button class="fav' + (p.favorito ? " on" : "") + '" data-fav="' + esc(p.id) + '" aria-label="Favorita">♥</button></div>'
+        + '<div class="info"><div class="nom">' + esc(p.nombre) + '</div><div class="meta">' + esc(p.categoria) + "</div>"
+        + (p.talla ? '<span class="chip">' + esc(p.talla) + "</span>" : '<span class="chip aviso">sin talla</span>') + "</div>";
+      g.appendChild(d);
+    });
+    observarImagenes();
+  }
+
+  async function alternarFav(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; });
+    if (!p) return;
+    var nuevo = !p.favorito;
+    p.favorito = nuevo; renderArmario();
+    try {
+      await modificarInv(function (inv) { var q = inv.prendas.find(function (x) { return x.id === id; }); if (q) q.favorito = nuevo; });
     } catch (e) {
-      if (e.codigo === "invalid_grant") borrar(K_REFRESH);
-      throw e;
+      var q = S.inv.prendas.find(function (x) { return x.id === id; });
+      if (q) q.favorito = !nuevo;
+      renderArmario(); toast("No se pudo guardar el favorito");
     }
   }
 
-  // ---------- Dropbox: leer y escribir ----------
-  async function subirJSON(ruta, objeto) {
-    var token = await obtenerToken();
-    var resp = await fetch("https://content.dropboxapi.com/2/files/upload", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + token,
-        "Content-Type": "application/octet-stream",
-        "Dropbox-API-Arg": JSON.stringify({ path: ruta, mode: "overwrite", mute: true })
-      },
-      body: new Blob([JSON.stringify(objeto, null, 2)], { type: "application/octet-stream" })
-    });
-    if (!resp.ok) throw new Error("No se pudo guardar (" + resp.status + "): " + (await resp.text()));
-    return resp.json();
+  // ---- Detalle ----
+  var urlGrande = null;
+  function cerrarDetalle() {
+    $("fondo").hidden = true; $("hoja").innerHTML = "";
+    if (urlGrande) { URL.revokeObjectURL(urlGrande); urlGrande = null; }
+  }
+  function abrirDetalle(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; });
+    if (!p) return;
+    var filas = [];
+    function fila(k, v) { if (v) filas.push("<dt>" + k + "</dt><dd>" + v + "</dd>"); }
+    fila("Categoría", esc(p.categoria));
+    fila("Tipo", esc(p.tipo));
+    fila("Talla", p.talla ? esc(p.talla) : '<span class="chip aviso">sin talla</span>');
+    fila("Color", p.color ? '<span class="punto" style="background:' + colorHex(p.color) + '"></span>' + esc(p.color) : "");
+    if ((p.colores2 || []).length) fila("Otros colores", p.colores2.map(function (c) { return '<span class="punto" style="background:' + colorHex(c) + '"></span>' + esc(c); }).join("  "));
+    fila("Temporada", esc(p.temporada));
+    fila("Abrigo", esc(p.abrigo));
+    fila("Tejido", esc(p.tejido));
+    fila("Estado", esc(p.estado));
+    $("hoja").innerHTML = '<div class="grande"><img id="imgGrande" alt=""></div>'
+      + "<h3>" + esc(p.nombre) + "</h3>"
+      + '<dl class="ficha">' + filas.join("") + "</dl>"
+      + '<button class="btn sec" data-acc="fav" data-id="' + esc(p.id) + '">' + (p.favorito ? "♥ Quitar de favoritas" : "♡ Marcar como favorita") + "</button>"
+      + '<button class="btn" data-acc="editar" data-id="' + esc(p.id) + '">Editar</button>'
+      + '<button class="btn peligro" data-acc="eliminar" data-id="' + esc(p.id) + '">Eliminar</button>'
+      + '<button class="btn sec" data-acc="cerrar">Cerrar</button>';
+    $("fondo").hidden = false;
+    descargar(p.foto).then(function (b) {
+      if (!b || $("fondo").hidden) return;
+      urlGrande = URL.createObjectURL(b);
+      var im = $("imgGrande"); if (im) im.src = urlGrande;
+    }).catch(function () { toast("No se pudo cargar la foto grande"); });
   }
 
-  async function leerJSON(ruta) {
-    var token = await obtenerToken();
-    var resp = await fetch("https://content.dropboxapi.com/2/files/download", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + token,
-        "Dropbox-API-Arg": JSON.stringify({ path: ruta })
-      }
-    });
-    if (resp.status === 409) return null; // el archivo no existe todavía
-    if (!resp.ok) throw new Error("No se pudo leer (" + resp.status + "): " + (await resp.text()));
-    return JSON.parse(await resp.text());
-  }
-
-  async function probarGuardado() {
-    var btn = $("btnProbar");
-    var salida = $("resultado");
-    btn.disabled = true;
-    salida.classList.add("oculto");
+  async function eliminarPrenda(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; });
+    if (!p) return;
+    if (!confirm("¿Eliminar «" + p.nombre + "»? Se borrará también su foto de Dropbox.")) return;
     try {
-      var inv = await leerJSON(RUTA_INVENTARIO);
-      var mensaje;
-      if (inv === null) {
-        inv = {
-          version: 1,
-          creado: new Date().toISOString(),
-          prendas: [],
-          conjuntos: [],
-          calendario: [],
-          sugerencias: []
-        };
-        await subirJSON(RUTA_INVENTARIO, inv);
-        inv = await leerJSON(RUTA_INVENTARIO);
-        mensaje = "Archivo inventario.json creado y leído correctamente.";
-      } else {
-        mensaje = "El archivo inventario.json ya existía y se ha leído correctamente. No se ha modificado.";
+      await modificarInv(function (inv) { inv.prendas = inv.prendas.filter(function (x) { return x.id !== id; }); });
+      try { await borrarArchivo(p.foto); await borrarArchivo(p.miniatura); } catch (e) { /* la prenda ya no está en el inventario */ }
+      olvidarMini(id);
+      cerrarDetalle(); prepararFiltros(); renderArmario(); toast("Prenda eliminada");
+    } catch (e) { toast("No se pudo eliminar: " + e.message); }
+  }
+
+  // ================== Formulario ==================
+  function nuevoId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function pintarColores(cont, seleccion, multiple) {
+    cont.innerHTML = "";
+    COLORES.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button"; b.title = c[0]; b.setAttribute("data-c", c[0]); b.setAttribute("aria-label", c[0]);
+      b.style.background = c[1];
+      var on = multiple ? seleccion.indexOf(c[0]) >= 0 : seleccion === c[0];
+      if (on) b.classList.add("on");
+      cont.appendChild(b);
+    });
+  }
+  function pintarSeg(cont, valores, actual) {
+    cont.innerHTML = "";
+    valores.forEach(function (v) {
+      var b = document.createElement("button");
+      b.type = "button"; b.setAttribute("data-v", v); b.textContent = v;
+      if (v === actual) b.classList.add("on");
+      cont.appendChild(b);
+    });
+  }
+  function llenarCategoriasForm(sel) {
+    var h = '<option value="">Elige una categoría…</option>';
+    todasCategorias().forEach(function (c) { h += '<option value="' + esc(c) + '"' + (c === sel ? " selected" : "") + ">" + esc(c) + "</option>"; });
+    h += '<option value="__nueva">➕ Nueva categoría…</option>';
+    $("fCategoria").innerHTML = h;
+  }
+
+  var ultimaCategoria = "";
+  function prepararFormulario(p) {
+    S.editId = p ? p.id : null;
+    F = {
+      foto: null,
+      color: p ? (p.color || "") : "",
+      colores2: p ? (p.colores2 || []).slice() : [],
+      abrigo: p ? (p.abrigo || "") : "",
+      favorito: p ? !!p.favorito : false
+    };
+    $("tituloForm").textContent = p ? "Editar prenda" : "Añadir prenda";
+    $("btnGuardar").textContent = p ? "Guardar cambios" : "Guardar prenda";
+    $("btnCancelar").hidden = !p;
+    $("errForm").textContent = "";
+    $("fFile").value = "";
+    $("fotoPrev").hidden = true; $("fotoPrev").removeAttribute("src");
+    $("foto-vacia").hidden = false; $("cambiarFoto").hidden = true;
+    $("fNombre").value = p ? p.nombre : "";
+    llenarCategoriasForm(p ? p.categoria : ultimaCategoria);
+    $("fCatNueva").hidden = true; $("fCatNueva").value = "";
+    $("fTipo").value = p ? (p.tipo || "") : "";
+    $("fTejido").value = p ? (p.tejido || "") : "";
+    var th = '<option value="">Sin indicar</option>';
+    TALLAS.forEach(function (t) { th += '<option value="' + esc(t) + '">' + esc(t) + "</option>"; });
+    th += '<option value="__otra">Otra…</option>';
+    $("fTalla2").innerHTML = th;
+    $("fTallaOtra").hidden = true; $("fTallaOtra").value = "";
+    if (p && p.talla) {
+      if (TALLAS.indexOf(p.talla) >= 0) $("fTalla2").value = p.talla;
+      else { $("fTalla2").value = "__otra"; $("fTallaOtra").hidden = false; $("fTallaOtra").value = p.talla; }
+    }
+    var tp = '<option value="">Sin indicar</option>';
+    TEMPORADAS.forEach(function (t) { tp += '<option value="' + t + '"' + (p && p.temporada === t ? " selected" : "") + ">" + t + "</option>"; });
+    $("fTemp2").innerHTML = tp;
+    var es = ""; ESTADOS.forEach(function (t) { es += '<option value="' + t + '"' + ((p ? p.estado : "disponible") === t ? " selected" : "") + ">" + t + "</option>"; });
+    $("fEstado").innerHTML = es;
+    pintarColores($("coloresP"), F.color, false);
+    pintarColores($("coloresS"), F.colores2, true);
+    $("nomColorP").textContent = F.color;
+    pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
+    pintarFavForm();
+    $("masDetalles").open = !!p;
+  }
+  function pintarFavForm() {
+    var b = $("btnFavForm");
+    b.classList.toggle("on", F.favorito);
+    b.textContent = F.favorito ? "♥ Favorita" : "♡ Marcar como favorita";
+  }
+
+  async function guardarPrenda() {
+    var err = $("errForm"); err.textContent = "";
+    var nombre = $("fNombre").value.trim();
+    var catSel = $("fCategoria").value;
+    var cat = catSel === "__nueva" ? $("fCatNueva").value.trim() : catSel;
+    var editando = S.editId ? S.inv.prendas.find(function (x) { return x.id === S.editId; }) : null;
+    if (!F.foto && !editando) { err.textContent = "Falta la foto."; return; }
+    if (!nombre) { err.textContent = "Falta el nombre."; $("fNombre").focus(); return; }
+    if (!cat) { err.textContent = catSel === "__nueva" ? "Escribe el nombre de la nueva categoría." : "Elige una categoría."; return; }
+
+    var talla = $("fTalla2").value === "__otra" ? $("fTallaOtra").value.trim() : $("fTalla2").value;
+    var btn = $("btnGuardar"), textoBtn = btn.textContent;
+    btn.disabled = true; btn.textContent = "Guardando…";
+    try {
+      var id = editando ? editando.id : nuevoId();
+      var rutaFoto = "/fotos/" + id + ".jpg", rutaMini = "/fotos/mini/" + id + ".jpg";
+      if (F.foto) {
+        btn.textContent = "Comprimiendo foto…";
+        var c = await cargarImagen(F.foto), grande, mini;
+        try { grande = await aJpeg(c.img, 1000, 0.8); mini = await aJpeg(c.img, 400, 0.75); }
+        finally { URL.revokeObjectURL(c.url); }
+        btn.textContent = "Subiendo a Dropbox…";
+        await subir(rutaFoto, grande);
+        await subir(rutaMini, mini);
+        olvidarMini(id);
       }
-      salida.textContent = mensaje + "\n\n" + JSON.stringify(inv, null, 2);
-      salida.classList.remove("oculto");
-      mostrar("Conectado y funcionando", "Dropbox guarda y lee tus datos correctamente.", "ok");
+      btn.textContent = "Guardando datos…";
+      var ahora = new Date().toISOString();
+      var datos = {
+        nombre: nombre, categoria: cat, tipo: $("fTipo").value.trim(), talla: talla,
+        color: F.color, colores2: F.colores2.filter(function (x) { return x !== F.color; }),
+        temporada: $("fTemp2").value, abrigo: F.abrigo, tejido: $("fTejido").value.trim(),
+        estado: $("fEstado").value || "disponible", favorito: F.favorito
+      };
+      await modificarInv(function (inv) {
+        var existe = CATS_BASE.concat(inv.categoriasExtra).some(function (x) { return norm(x) === norm(cat); });
+        if (!existe) inv.categoriasExtra.push(cat);
+        var i = inv.prendas.findIndex(function (x) { return x.id === id; });
+        if (i >= 0) inv.prendas[i] = Object.assign({}, inv.prendas[i], datos, { modificada: ahora });
+        else inv.prendas.unshift(Object.assign({ id: id, foto: rutaFoto, miniatura: rutaMini, creada: ahora }, datos));
+      });
+      // Si escribió una categoría igual a otra ya existente (con otra forma de escribirla), se usa la existente
+      var vuelve = !!editando;
+      ultimaCategoria = cat;
+      S.editId = null;
+      prepararFiltros();
+      if (vuelve) { irA("armario"); toast("Cambios guardados ✓"); }
+      else { prepararFormulario(null); window.scrollTo(0, 0); toast("Prenda guardada ✓ Puedes añadir otra"); }
     } catch (e) {
-      salida.textContent = "Error: " + e.message;
-      salida.classList.remove("oculto");
-      mostrar("Hay un problema", e.message, "mal");
+      err.textContent = "No se pudo guardar: " + e.message;
     } finally {
       btn.disabled = false;
+      btn.textContent = S.editId ? "Guardar cambios" : "Guardar prenda";
+      if (btn.textContent === "Guardando…") btn.textContent = textoBtn;
     }
   }
 
-  function desconectar() {
-    borrar(K_REFRESH);
-    accessToken = null;
-    accessExpira = 0;
-    vistaConectado(false);
-    mostrar("Desconectado", "Pulsa «Conectar con Dropbox» para volver a entrar.", "");
+  // ================== Eventos ==================
+  function eventos() {
+    $("btnConectar").addEventListener("click", iniciarConexion);
+    $("btnSalir").addEventListener("click", function () {
+      if (!confirm("¿Desconectar de Dropbox en este navegador? Tus prendas y fotos siguen guardadas en Dropbox.")) return;
+      borrarLS(K_REFRESH); accessToken = null; S.inv = null;
+      $("msgConexion").textContent = "Desconectado. Pulsa el botón para volver a entrar.";
+      pantalla("vConectar");
+    });
+
+    $("nav").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var tab = b.getAttribute("data-tab");
+      if (b.classList.contains("pronto")) { toast("Esta sección llegará en la fase " + b.getAttribute("data-fase") + "."); return; }
+      if (tab === "anadir" && S.editId) prepararFormulario(null);
+      if (tab === "armario" && S.editId) S.editId = null;
+      irA(tab);
+    });
+
+    $("busca").addEventListener("input", function (e) { S.filtros.texto = e.target.value; renderArmario(); });
+    [["fCat", "cat"], ["fTalla", "talla"], ["fColor", "color"], ["fTemp", "temp"], ["fFav", "fav"]].forEach(function (par) {
+      $(par[0]).addEventListener("change", function (e) { S.filtros[par[1]] = e.target.value; renderArmario(); });
+    });
+    $("btnLimpiar").addEventListener("click", function () {
+      S.filtros = { texto: "", cat: "", talla: "", color: "", temp: "", fav: "" };
+      $("busca").value = ""; prepararFiltros(); renderArmario();
+    });
+
+    $("grid").addEventListener("click", function (e) {
+      var f = e.target.closest("[data-fav]");
+      if (f) { e.stopPropagation(); alternarFav(f.getAttribute("data-fav")); return; }
+      var t = e.target.closest(".tarjeta");
+      if (t) abrirDetalle(t.getAttribute("data-id"));
+    });
+
+    $("fondo").addEventListener("click", function (e) {
+      if (e.target === $("fondo")) { cerrarDetalle(); return; }
+      var b = e.target.closest("[data-acc]"); if (!b) return;
+      var acc = b.getAttribute("data-acc"), id = b.getAttribute("data-id");
+      if (acc === "cerrar") cerrarDetalle();
+      if (acc === "fav") { alternarFav(id).then(function () { if (!$("fondo").hidden) abrirDetalle(id); }); }
+      if (acc === "eliminar") eliminarPrenda(id);
+      if (acc === "editar") {
+        var p = S.inv.prendas.find(function (x) { return x.id === id; });
+        cerrarDetalle(); prepararFormulario(p); irA("anadir");
+        descargar(p.miniatura).then(function (bl) {
+          if (bl && S.editId === id && !F.foto) { var im = $("fotoPrev"); im.src = URL.createObjectURL(bl); im.hidden = false; $("foto-vacia").hidden = true; $("cambiarFoto").hidden = false; }
+        }).catch(function () {});
+      }
+    });
+
+    $("fFile").addEventListener("change", function (e) {
+      var file = e.target.files && e.target.files[0]; if (!file) return;
+      F.foto = file;
+      var im = $("fotoPrev"); im.src = URL.createObjectURL(file); im.hidden = false;
+      $("foto-vacia").hidden = true; $("cambiarFoto").hidden = false;
+      $("errForm").textContent = "";
+    });
+    $("fCategoria").addEventListener("change", function (e) {
+      var nueva = e.target.value === "__nueva";
+      $("fCatNueva").hidden = !nueva; if (nueva) $("fCatNueva").focus();
+    });
+    $("fTalla2").addEventListener("change", function (e) {
+      var otra = e.target.value === "__otra";
+      $("fTallaOtra").hidden = !otra; if (otra) $("fTallaOtra").focus();
+    });
+    $("coloresP").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var c = b.getAttribute("data-c");
+      F.color = F.color === c ? "" : c;
+      pintarColores($("coloresP"), F.color, false); $("nomColorP").textContent = F.color;
+    });
+    $("coloresS").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var c = b.getAttribute("data-c"), i = F.colores2.indexOf(c);
+      if (i >= 0) F.colores2.splice(i, 1); else F.colores2.push(c);
+      pintarColores($("coloresS"), F.colores2, true);
+    });
+    $("segAbrigo").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var v = b.getAttribute("data-v");
+      F.abrigo = F.abrigo === v ? "" : v;
+      pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
+    });
+    $("btnFavForm").addEventListener("click", function () { F.favorito = !F.favorito; pintarFavForm(); });
+    $("btnGuardar").addEventListener("click", guardarPrenda);
+    $("btnCancelar").addEventListener("click", function () { S.editId = null; irA("armario"); });
   }
 
-  // ---------- Inicio ----------
+  // ================== Inicio ==================
+  async function entrar() {
+    pantalla("vCargando"); $("txtCargando").textContent = "Cargando tu armario…";
+    try {
+      S.inv = await leerInventario();
+      prepararFiltros();
+      prepararFormulario(null);
+      irA("armario");
+    } catch (e) {
+      pantalla("vConectar");
+      $("msgConexion").textContent = "No se pudo cargar el armario: " + e.message + " Pulsa el botón para volver a conectar.";
+    }
+  }
+
   async function iniciar() {
-    $("btnConectar").addEventListener("click", iniciarConexion);
-    $("btnProbar").addEventListener("click", probarGuardado);
-    $("btnSalir").addEventListener("click", desconectar);
-
+    eventos();
     var params = new URLSearchParams(window.location.search);
-    var code = params.get("code");
-    var errorOAuth = params.get("error");
+    var code = params.get("code"), errOAuth = params.get("error");
 
-    if (errorOAuth) {
+    if (errOAuth) {
       history.replaceState(null, "", REDIRECT_URI);
-      mostrar("Dropbox no ha concedido el permiso", params.get("error_description") || errorOAuth, "mal");
-      vistaConectado(false);
+      pantalla("vConectar");
+      $("msgConexion").textContent = "Dropbox no ha concedido el permiso. " + (params.get("error_description") || "");
       return;
     }
-
     if (code) {
-      mostrar("Terminando la conexión…", "");
+      pantalla("vCargando"); $("txtCargando").textContent = "Terminando la conexión…";
       try {
         await terminarConexion(code, params.get("state"));
         history.replaceState(null, "", REDIRECT_URI);
-        vistaConectado(true);
-        mostrar("Conectado a Dropbox", "Pulsa «Probar guardado en Dropbox» para comprobar que todo funciona.", "ok");
+        await entrar();
       } catch (e) {
         history.replaceState(null, "", REDIRECT_URI);
-        vistaConectado(false);
-        mostrar("No se pudo conectar", e.message, "mal");
+        pantalla("vConectar"); $("msgConexion").textContent = "No se pudo conectar: " + e.message;
       }
       return;
     }
-
-    if (leer(K_REFRESH)) {
-      try {
-        await obtenerToken();
-        vistaConectado(true);
-        mostrar("Conectado a Dropbox", "Sesión recuperada automáticamente.", "ok");
-      } catch (e) {
-        vistaConectado(false);
-        mostrar("Hay que volver a conectar", e.message, "mal");
-      }
-    } else {
-      vistaConectado(false);
-      mostrar("Sin conectar", "Pulsa «Conectar con Dropbox» para empezar.", "");
-    }
+    if (leerLS(K_REFRESH)) { await entrar(); }
+    else { pantalla("vConectar"); }
   }
 
   iniciar();
