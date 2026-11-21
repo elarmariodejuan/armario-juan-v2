@@ -171,7 +171,26 @@
   .mini-grid img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
   .mini-grid img.lista { opacity: 1; }
   .mini-grid figcaption { font-size: 11px; margin-top: 3px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .mini-grid.stats figcaption { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .cap-nom { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cap-n { display: block; color: var(--suave); margin-top: 1px; }
   .grupo-tit { font-size: 13px; font-weight: 600; color: var(--marron); margin-top: 8px; }
+  .cal-cab { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 8px; }
+  .cal-cab .linkbtn { font-size: 18px; padding: 6px 14px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+  .cal-nom { font-size: 12px; color: var(--suave); padding: 4px 0; }
+  .cal-dia { aspect-ratio: 1 / 1; border: 1.5px solid transparent; border-radius: 12px; background: transparent; font-size: 15px; color: var(--texto); position: relative; padding: 0; }
+  .cal-dia.hoy { border-color: var(--salvia); }
+  .cal-dia.sel { background: var(--salvia); color: #fff; }
+  .cal-dia.con::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--salvia-osc); }
+  .cal-dia.sel.con::after { background: #fff; }
+  .fila-btn { display: flex; gap: 8px; }
+  .fila-btn .btn { margin-top: 8px; }
+  .selp { cursor: pointer; }
+  .selp .im { position: relative; border: 2px solid transparent; }
+  .selp.on .im { border-color: var(--salvia-osc); }
+  .chk { display: none; position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: var(--salvia-osc); color: #fff; font-size: 14px; align-items: center; justify-content: center; }
+  .selp.on .chk { display: flex; }
   .vacio-caja { background: var(--blanco); border-radius: 18px; padding: 20px; line-height: 1.5; font-size: 15px; }
 </style>
 </head>
@@ -286,6 +305,29 @@
     <button class="btn" id="btnCrear">Crear conjuntos</button>
     <div id="resultados" style="margin-top:16px"></div>
   </section>
+
+  <!-- Calendario -->
+  <section id="vCalendario" hidden>
+    <h2 style="margin:4px 2px 10px;font-size:20px">Calendario</h2>
+    <div class="card" style="padding:14px">
+      <div class="cal-cab"><button class="linkbtn" id="calAnt" aria-label="Mes anterior">◀</button><span id="calMes"></span><button class="linkbtn" id="calSig" aria-label="Mes siguiente">▶</button></div>
+      <div class="cal-grid" id="calSem"></div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="card" id="calDia"></div>
+    <div class="card">
+      <div class="conj-cab"><span>Lo que más y menos lleva</span></div>
+      <div class="seg" id="segStats"></div>
+      <div id="calStats" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- Favoritos -->
+  <section id="vFavoritos" hidden>
+    <h2 style="margin:4px 2px 10px;font-size:20px">Favoritos</h2>
+    <div class="seg" id="segFav"></div>
+    <div id="favCuerpo" style="margin-top:14px"></div>
+  </section>
 </main>
 
 <nav id="nav" hidden>
@@ -293,11 +335,12 @@
   <button data-tab="anadir"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Añadir</button>
   <button data-tab="conjuntos"><svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 1 2 2c-1 .5-2 1-2 2v1M3 19l9-6 9 6z"/></svg>Conjuntos</button>
   <button data-tab="completar" class="pronto" data-fase="6"><svg viewBox="0 0 24 24"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg>Completar</button>
-  <button data-tab="calendario" class="pronto" data-fase="5"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Calendario</button>
-  <button data-tab="favoritos" class="pronto" data-fase="5"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Favoritos</button>
+  <button data-tab="calendario"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Calendario</button>
+  <button data-tab="favoritos"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Favoritos</button>
 </nav>
 
 <div class="fondo" id="fondo" hidden><div class="hoja" id="hoja"></div></div>
+<div class="fondo" id="fondo2" hidden><div class="hoja" id="hoja2"></div></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -576,11 +619,11 @@
 
   // ================== Navegación ==================
   function ocultarTodo() {
-    ["vConectar", "vCargando", "vArmario", "vAnadir", "vConjuntos"].forEach(function (id) { $(id).hidden = true; });
+    ["vConectar", "vCargando", "vArmario", "vAnadir", "vConjuntos", "vCalendario", "vFavoritos"].forEach(function (id) { $(id).hidden = true; });
   }
   function pantalla(nombre) {
     ocultarTodo();
-    $("nav").hidden = !(nombre === "vArmario" || nombre === "vAnadir" || nombre === "vConjuntos");
+    $("nav").hidden = ["vArmario", "vAnadir", "vConjuntos", "vCalendario", "vFavoritos"].indexOf(nombre) < 0;
     $(nombre).hidden = false;
     window.scrollTo(0, 0);
   }
@@ -592,6 +635,8 @@
     if (tab === "armario") { pantalla("vArmario"); renderArmario(); }
     else if (tab === "anadir") { if (!S.editId) prepararFormulario(null); pantalla("vAnadir"); }
     else if (tab === "conjuntos") { prepararConjuntos(); pantalla("vConjuntos"); }
+    else if (tab === "calendario") { pantalla("vCalendario"); renderCalendario(); }
+    else if (tab === "favoritos") { pantalla("vFavoritos"); renderFavoritos(); }
     marcarTab(tab);
   }
 
@@ -654,12 +699,14 @@
     if (!p) return;
     var nuevo = !p.favorito;
     p.favorito = nuevo; renderArmario();
+    if (S.tab === "favoritos") renderFavoritos();
     try {
       await modificarInv(function (inv) { var q = inv.prendas.find(function (x) { return x.id === id; }); if (q) q.favorito = nuevo; });
     } catch (e) {
       var q = S.inv.prendas.find(function (x) { return x.id === id; });
       if (q) q.favorito = !nuevo;
-      renderArmario(); toast("No se pudo guardar el favorito");
+      renderArmario(); if (S.tab === "favoritos") renderFavoritos();
+      toast("No se pudo guardar el favorito");
     }
   }
 
@@ -702,9 +749,18 @@
   async function eliminarPrenda(id) {
     var p = S.inv.prendas.find(function (x) { return x.id === id; });
     if (!p) return;
-    if (!confirm("¿Eliminar «" + p.nombre + "»? Se borrará también su foto de Dropbox.")) return;
+    var nCal = (S.inv.calendario || []).filter(function (e) { return e.prendas.indexOf(id) >= 0; }).length;
+    var nFav = (S.inv.conjuntos || []).filter(function (c) { return c.prendas.indexOf(id) >= 0; }).length;
+    var extra = (nCal || nFav) ? " También se quitará de " + (nCal ? nCal + (nCal === 1 ? " día del calendario" : " días del calendario") : "") + (nCal && nFav ? " y de " : "") + (nFav ? nFav + (nFav === 1 ? " conjunto favorito" : " conjuntos favoritos") : "") + "." : "";
+    if (!confirm("¿Eliminar «" + p.nombre + "»? Se borrará también su foto de Dropbox." + extra)) return;
     try {
-      await modificarInv(function (inv) { inv.prendas = inv.prendas.filter(function (x) { return x.id !== id; }); });
+      await modificarInv(function (inv) {
+        inv.prendas = inv.prendas.filter(function (x) { return x.id !== id; });
+        inv.calendario = inv.calendario.map(function (e) { return Object.assign({}, e, { prendas: e.prendas.filter(function (x) { return x !== id; }) }); })
+          .filter(function (e) { return e.prendas.length > 0; });
+        inv.conjuntos = inv.conjuntos.map(function (c) { return Object.assign({}, c, { prendas: c.prendas.filter(function (x) { return x !== id; }) }); })
+          .filter(function (c) { return c.prendas.length > 0; });
+      });
       try { await borrarArchivo(p.foto); await borrarArchivo(p.miniatura); } catch (e) { /* la prenda ya no está en el inventario */ }
       olvidarMini(id);
       cerrarDetalle(); prepararFiltros(); renderArmario(); toast("Prenda eliminada");
@@ -1207,7 +1263,7 @@
     h += '<div class="conj-nombres">' + piezas.map(function (x) { return esc(x[0].nombre); }).join(" · ") + "</div>";
     h += '<ul class="razones">' + o.razones.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>";
     o.avisos.forEach(function (a) { h += '<div class="aviso-caja">' + esc(a) + "</div>"; });
-    h += '<button class="btn sec" data-hoy="' + i + '">' + (C.dia ? "Se lo pone mañana" : "Se lo pone hoy") + "</button></div>";
+    h += '<div class="fila-btn"><button class="btn sec" data-hoy="' + i + '">' + (C.dia ? "Se lo pone mañana" : "Se lo pone hoy") + '</button><button class="btn sec" data-favc="' + i + '" style="flex:0 0 auto;width:auto;padding:15px 18px">♡ Favorito</button></div></div>';
     return h;
   }
 
@@ -1441,6 +1497,219 @@
     cargarMinis(el);
   }
 
+
+  // ================== Calendario y favoritos (Fase 5) ==================
+  var K = { mes: null, sel: "", stats: "30" };
+  var FV = { vista: "prendas" };
+  var PK = null; // selector de prendas del calendario
+  var ETQ = {
+    "Camisetas y partes de arriba": ["Camiseta", 1], "Bodies": ["Body", 1], "Camisas": ["Camisa", 1], "Jerséis": ["Jersey", 2], "Sudaderas": ["Sudadera", 2],
+    "Pantalones y partes de abajo": ["Pantalón", 3], "Petos": ["Peto", 3], "Conjuntos": ["Conjunto", 0], "Monos": ["Mono", 0], "Vestidos": ["Vestido", 0],
+    "Abrigos y chaquetas": ["Abrigo", 4], "Chalecos": ["Chaleco", 4], "Rebecas": ["Rebeca", 4], "Calzado": ["Calzado", 5], "Calcetines": ["Calcetines", 6],
+    "Gorros": ["Gorro", 7], "Accesorios": ["Accesorio", 8]
+  };
+  function etq(p) { return ETQ[p.categoria] || [p.categoria, 9]; }
+  function mayus(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+  function fechaDe(f) { var p = f.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function fechaLarga(f) { return mayus(fechaDe(f).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })); }
+  function fechaCorta(f) { return fechaDe(f).toLocaleDateString("es-ES", { day: "numeric", month: "short" }); }
+  function piezasPorIds(ids) {
+    var mapa = {};
+    S.inv.prendas.forEach(function (p) { mapa[p.id] = p; });
+    return ids.map(function (id) { return mapa[id]; }).filter(Boolean).sort(function (a, b) { return etq(a)[1] - etq(b)[1]; });
+  }
+  function htmlPiezas(ps) {
+    return '<div class="conj-fotos">' + ps.map(function (p) {
+      return '<figure><div class="im"><img alt="' + esc(p.nombre) + '" data-mini="' + esc(p.id) + '"></div><figcaption>' + esc(etq(p)[0]) + "</figcaption></figure>";
+    }).join("") + '</div><div class="conj-nombres">' + ps.map(function (p) { return esc(p.nombre); }).join(" · ") + "</div>";
+  }
+  async function guardarEnCalendario(f, ids, modo) {
+    await modificarInv(function (inv) {
+      inv.calendario = inv.calendario.filter(function (e) { return e.fecha !== f; });
+      inv.calendario.push({ id: nuevoId(), fecha: f, prendas: ids.slice(), modo: modo, creada: new Date().toISOString() });
+      inv.calendario.sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; });
+    });
+  }
+  function confirmarSustituir(f) {
+    var ya = (S.inv.calendario || []).some(function (e) { return e.fecha === f; });
+    return !ya || confirm("Ya hay un conjunto guardado el " + fechaCorta(f) + ". ¿Quieres sustituirlo?");
+  }
+
+  // ---- Calendario ----
+  function renderCalendario() {
+    if (!K.mes) { var h0 = new Date(); K.mes = new Date(h0.getFullYear(), h0.getMonth(), 1); }
+    if (!K.sel) K.sel = fechaHoy(0);
+    var y = K.mes.getFullYear(), m = K.mes.getMonth();
+    $("calMes").textContent = mayus(K.mes.toLocaleDateString("es-ES", { month: "long", year: "numeric" }));
+    $("calSem").innerHTML = ["L", "M", "X", "J", "V", "S", "D"].map(function (d) { return '<span class="cal-nom">' + d + "</span>"; }).join("");
+    var primero = (new Date(y, m, 1).getDay() + 6) % 7, dias = new Date(y, m + 1, 0).getDate();
+    var con = {}; S.inv.calendario.forEach(function (e) { con[e.fecha] = true; });
+    var hoy = fechaHoy(0), h = "";
+    for (var i = 0; i < primero; i++) h += "<span></span>";
+    for (var d = 1; d <= dias; d++) {
+      var f = y + "-" + dos(m + 1) + "-" + dos(d);
+      h += '<button class="cal-dia' + (f === hoy ? " hoy" : "") + (f === K.sel ? " sel" : "") + (con[f] ? " con" : "") + '" data-f="' + f + '">' + d + "</button>";
+    }
+    $("calGrid").innerHTML = h;
+    renderDia(); renderStats();
+  }
+  function renderDia() {
+    var f = K.sel, ent = S.inv.calendario.find(function (e) { return e.fecha === f; }), el = $("calDia");
+    var h = '<div class="conj-cab"><span>' + esc(fechaLarga(f)) + "</span></div>";
+    if (ent) {
+      var ps = piezasPorIds(ent.prendas);
+      h += ps.length ? htmlPiezas(ps) : '<p class="nota">Las prendas de este día ya no existen.</p>';
+      h += '<button class="btn" data-cal="editar">Cambiar prendas</button>'
+        + (ps.length ? '<button class="btn sec" data-cal="fav">♡ Guardar en favoritos</button>' : "")
+        + '<button class="btn peligro" data-cal="borrar">Eliminar este día</button>';
+    } else {
+      h += '<p class="nota">Todavía no hay conjunto guardado este día.</p><button class="btn" data-cal="nuevo">Añadir conjunto de este día</button>';
+      if ((S.inv.conjuntos || []).length) h += '<button class="btn sec" data-cal="favorito">Usar un conjunto favorito</button>';
+    }
+    el.innerHTML = h; cargarMinis(el);
+  }
+  function renderStats() {
+    pintarPares($("segStats"), [["30", "Últimos 30 días"], ["todo", "Todo el tiempo"]], K.stats);
+    var aj = S.inv.ajustes || {}, hoy = new Date(), hoyMs = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    var cont = {}, hay = 0;
+    S.inv.calendario.forEach(function (e) {
+      var f = e.fecha.split("-").map(Number), dias = Math.round((hoyMs - Date.UTC(f[0], f[1] - 1, f[2])) / 86400000);
+      if (dias < 0 || (K.stats === "30" && dias > 30)) return;
+      hay++; e.prendas.forEach(function (id) { cont[id] = (cont[id] || 0) + 1; });
+    });
+    var el = $("calStats");
+    if (!hay) { el.innerHTML = '<p class="nota">Todavía no hay conjuntos guardados en este periodo. Cuando guardes lo que lleva cada día, aquí verás qué prendas usa más y cuáles apenas usa.</p>'; return; }
+    var elegibles = S.inv.prendas.filter(function (p) {
+      return p.categoria !== "Pijamas" && !(p.categoria === "Calzado" && !aj.usaCalzado) && (!p.estado || p.estado === "disponible");
+    });
+    var mas = elegibles.filter(function (p) { return cont[p.id] > 0; }).sort(function (a, b) { return cont[b.id] - cont[a.id]; }).slice(0, 6);
+    var idsMas = mas.map(function (p) { return p.id; });
+    var menos = elegibles.filter(function (p) { return idsMas.indexOf(p.id) < 0; })
+      .sort(function (a, b) { return (cont[a.id] || 0) - (cont[b.id] || 0); }).slice(0, 6);
+    function grid(lista) {
+      return '<div class="mini-grid stats">' + lista.map(function (p) {
+        var n = cont[p.id] || 0;
+        return '<figure><div class="im"><img alt="" data-mini="' + esc(p.id) + '"></div><figcaption><span class="cap-nom">' + esc(p.nombre) + '</span><span class="cap-n">' + (n ? n + (n === 1 ? " vez" : " veces") : "nunca") + "</span></figcaption></figure>";
+      }).join("") + "</div>";
+    }
+    el.innerHTML = '<div class="grupo-tit">Lo que más lleva</div>' + (mas.length ? grid(mas) : '<p class="nota">Nada todavía.</p>')
+      + '<div class="grupo-tit">Lo que menos lleva</div>' + (menos.length ? grid(menos) : '<p class="nota">Está usando todo lo que tiene.</p>')
+      + '<p class="nota">El estilista da prioridad a lo que menos usa para aprovechar toda la ropa.</p>';
+    cargarMinis(el);
+  }
+
+  // ---- Selector de prendas para un día ----
+  function abrirSelector(fecha, ids) {
+    var existen = S.inv.prendas.map(function (p) { return p.id; });
+    PK = { fecha: fecha, ids: ids.filter(function (id) { return existen.indexOf(id) >= 0; }), cat: "" };
+    pintarSelector(); $("fondo2").hidden = false;
+  }
+  function pintarSelector() {
+    var cats = [];
+    S.inv.prendas.forEach(function (p) { if (p.categoria !== "Pijamas" && cats.indexOf(p.categoria) < 0) cats.push(p.categoria); });
+    var lista = S.inv.prendas.filter(function (p) { return p.categoria !== "Pijamas" && (!PK.cat || p.categoria === PK.cat); })
+      .sort(function (a, b) { return etq(a)[1] - etq(b)[1] || a.nombre.localeCompare(b.nombre, "es"); });
+    var h = '<div class="conj-cab"><span>' + esc(fechaLarga(PK.fecha)) + '</span><button class="linkbtn" data-sel="cerrar">Cerrar</button></div>'
+      + '<p class="nota">Toca las prendas que ha llevado ese día.</p>'
+      + '<select id="selCat"><option value="">Todas las categorías</option>'
+      + cats.map(function (c) { return '<option value="' + esc(c) + '"' + (c === PK.cat ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select>"
+      + '<div class="mini-grid" style="margin-top:12px">'
+      + lista.map(function (p) {
+        return '<figure class="selp' + (PK.ids.indexOf(p.id) >= 0 ? " on" : "") + '" data-id="' + esc(p.id) + '"><div class="im"><img alt="" data-mini="' + esc(p.id) + '"><span class="chk">✓</span></div><figcaption>' + esc(p.nombre) + "</figcaption></figure>";
+      }).join("") + "</div>"
+      + '<button class="btn" data-sel="guardar" id="btnGuardarSel"></button>';
+    $("hoja2").innerHTML = h;
+    actualizarBtnSel();
+    cargarMinis($("hoja2"));
+  }
+  function actualizarBtnSel() {
+    var b = $("btnGuardarSel"); if (!b) return;
+    b.textContent = "Guardar (" + PK.ids.length + (PK.ids.length === 1 ? " prenda)" : " prendas)");
+  }
+  function cerrarOverlay2() { $("fondo2").hidden = true; $("hoja2").innerHTML = ""; PK = null; }
+  async function guardarSelector() {
+    if (!PK) return;
+    if (PK.ids.length < 2) { toast("Elige al menos 2 prendas"); return; }
+    var f = PK.fecha, ids = PK.ids.slice();
+    try {
+      await guardarEnCalendario(f, ids, "manual");
+      cerrarOverlay2(); K.sel = f; renderCalendario(); toast("Conjunto guardado ✓");
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+  function abrirListaFavoritos(fecha) {
+    var h = '<div class="conj-cab"><span>Elige un conjunto favorito</span><button class="linkbtn" data-sel="cerrar">Cerrar</button></div>';
+    S.inv.conjuntos.forEach(function (c) {
+      var ps = piezasPorIds(c.prendas); if (!ps.length) return;
+      h += '<div class="conj"><div class="conj-cab"><span>' + esc(c.nombre) + "</span></div>" + htmlPiezas(ps)
+        + '<button class="btn" data-elegir="' + esc(c.id) + '" data-fecha="' + esc(fecha) + '">Usar este conjunto</button></div>';
+    });
+    $("hoja2").innerHTML = h; $("fondo2").hidden = false; cargarMinis($("hoja2"));
+  }
+
+  // ---- Favoritos ----
+  async function guardarFavorito(ids) {
+    var clave = claveIds(ids);
+    if ((S.inv.conjuntos || []).some(function (c) { return claveIds(c.prendas) === clave; })) { toast("Ya está en tus conjuntos favoritos"); return; }
+    var def = "Conjunto " + fechaCorta(fechaHoy(0));
+    var nombre = prompt("Nombre para este conjunto favorito:", def);
+    if (nombre === null) return;
+    nombre = (nombre || "").trim() || def;
+    try {
+      await modificarInv(function (inv) {
+        if (!inv.conjuntos.some(function (c) { return claveIds(c.prendas) === clave; }))
+          inv.conjuntos.push({ id: nuevoId(), nombre: nombre, prendas: ids.slice(), creada: new Date().toISOString() });
+      });
+      toast("Guardado en favoritos ♥");
+      if (S.tab === "favoritos") renderFavoritos();
+      if (S.tab === "calendario") renderDia();
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+  function renderFavoritos() {
+    pintarPares($("segFav"), [["prendas", "Prendas"], ["conjuntos", "Conjuntos"]], FV.vista);
+    var el = $("favCuerpo");
+    if (FV.vista === "prendas") {
+      var fs = S.inv.prendas.filter(function (p) { return p.favorito; });
+      if (!fs.length) { el.innerHTML = '<div class="vacio">Todavía no hay prendas favoritas.<br>Toca el corazón de una prenda en <b>Armario</b> para marcarla.</div>'; return; }
+      el.innerHTML = '<div class="grid">' + fs.map(function (p) {
+        return '<div class="tarjeta" data-id="' + esc(p.id) + '"><div class="foto"><img alt="" data-mini="' + esc(p.id) + '"><button class="fav on" data-fav="' + esc(p.id) + '" aria-label="Quitar de favoritas">♥</button></div>'
+          + '<div class="info"><div class="nom">' + esc(p.nombre) + '</div><div class="meta">' + esc(p.categoria) + "</div></div></div>";
+      }).join("") + "</div>";
+      cargarMinis(el);
+      return;
+    }
+    var cs = S.inv.conjuntos || [];
+    if (!cs.length) { el.innerHTML = '<div class="vacio">Todavía no hay conjuntos favoritos.<br>Guarda uno con <b>♡ Favorito</b> en <b>Conjuntos</b> o desde el <b>Calendario</b>.</div>'; return; }
+    el.innerHTML = cs.map(function (c) {
+      var ps = piezasPorIds(c.prendas);
+      return '<div class="conj" data-cid="' + esc(c.id) + '"><div class="conj-cab"><span>' + esc(c.nombre) + "</span></div>"
+        + (ps.length ? htmlPiezas(ps) : '<p class="nota">Las prendas de este conjunto ya no existen.</p>')
+        + '<div class="fila-btn"><button class="btn sec" data-fc="hoy">Hoy</button><button class="btn sec" data-fc="manana">Mañana</button></div>'
+        + '<div class="fila-btn"><button class="btn sec" data-fc="renombrar">Cambiar nombre</button><button class="btn peligro" data-fc="borrar">Eliminar</button></div></div>';
+    }).join("");
+    cargarMinis(el);
+  }
+  async function accionFavorito(id, acc) {
+    var c = S.inv.conjuntos.find(function (x) { return x.id === id; }); if (!c) return;
+    try {
+      if (acc === "hoy" || acc === "manana") {
+        var f = fechaHoy(acc === "hoy" ? 0 : 1);
+        if (!piezasPorIds(c.prendas).length) { toast("Las prendas de este conjunto ya no existen"); return; }
+        if (!confirmarSustituir(f)) return;
+        await guardarEnCalendario(f, c.prendas, "favorito");
+        toast("Guardado para " + (acc === "hoy" ? "hoy" : "mañana") + " ✓");
+      } else if (acc === "renombrar") {
+        var nuevo = prompt("Nuevo nombre:", c.nombre);
+        if (nuevo === null || !nuevo.trim()) return;
+        await modificarInv(function (inv) { var q = inv.conjuntos.find(function (x) { return x.id === id; }); if (q) q.nombre = nuevo.trim(); });
+        renderFavoritos();
+      } else if (acc === "borrar") {
+        if (!confirm("¿Eliminar el conjunto favorito «" + c.nombre + "»? Las prendas no se borran.")) return;
+        await modificarInv(function (inv) { inv.conjuntos = inv.conjuntos.filter(function (x) { return x.id !== id; }); });
+        renderFavoritos(); toast("Conjunto eliminado");
+      }
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+
   function pintarPares(cont, pares, actual) {
     cont.innerHTML = "";
     pares.forEach(function (p) {
@@ -1482,6 +1751,70 @@
 
   // ================== Eventos ==================
   function eventos() {
+    // Calendario
+    $("calAnt").addEventListener("click", function () { K.mes = new Date(K.mes.getFullYear(), K.mes.getMonth() - 1, 1); renderCalendario(); });
+    $("calSig").addEventListener("click", function () { K.mes = new Date(K.mes.getFullYear(), K.mes.getMonth() + 1, 1); renderCalendario(); });
+    $("calGrid").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-f]"); if (!b) return;
+      K.sel = b.getAttribute("data-f"); renderCalendario();
+    });
+    $("segStats").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      K.stats = b.getAttribute("data-v"); renderStats();
+    });
+    $("calDia").addEventListener("click", async function (e) {
+      var b = e.target.closest("[data-cal]"); if (!b) return;
+      var acc = b.getAttribute("data-cal"), f = K.sel;
+      var ent = S.inv.calendario.find(function (x) { return x.fecha === f; });
+      if (acc === "nuevo") abrirSelector(f, []);
+      else if (acc === "editar" && ent) abrirSelector(f, ent.prendas);
+      else if (acc === "favorito") abrirListaFavoritos(f);
+      else if (acc === "fav" && ent) guardarFavorito(ent.prendas);
+      else if (acc === "borrar" && ent) {
+        if (!confirm("¿Eliminar el conjunto del " + fechaCorta(f) + "?")) return;
+        try {
+          await modificarInv(function (inv) { inv.calendario = inv.calendario.filter(function (x) { return x.fecha !== f; }); });
+          renderCalendario(); toast("Eliminado");
+        } catch (er) { toast("No se pudo eliminar: " + er.message); }
+      }
+    });
+    $("fondo2").addEventListener("click", async function (e) {
+      if (e.target === $("fondo2")) { cerrarOverlay2(); return; }
+      var s = e.target.closest("[data-sel]");
+      if (s) { if (s.getAttribute("data-sel") === "cerrar") cerrarOverlay2(); else guardarSelector(); return; }
+      var el = e.target.closest("[data-elegir]");
+      if (el) {
+        var c = S.inv.conjuntos.find(function (x) { return x.id === el.getAttribute("data-elegir"); });
+        var f = el.getAttribute("data-fecha"); if (!c) return;
+        try {
+          await guardarEnCalendario(f, c.prendas, "favorito");
+          cerrarOverlay2(); K.sel = f; renderCalendario(); toast("Conjunto guardado ✓");
+        } catch (er) { toast("No se pudo guardar: " + er.message); }
+        return;
+      }
+      var p = e.target.closest(".selp");
+      if (p && PK) {
+        var id = p.getAttribute("data-id"), i = PK.ids.indexOf(id);
+        if (i >= 0) PK.ids.splice(i, 1); else PK.ids.push(id);
+        p.classList.toggle("on", i < 0); actualizarBtnSel();
+      }
+    });
+    $("fondo2").addEventListener("change", function (e) {
+      if (e.target.id === "selCat" && PK) { PK.cat = e.target.value; pintarSelector(); }
+    });
+    // Favoritos
+    $("segFav").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      FV.vista = b.getAttribute("data-v"); renderFavoritos();
+    });
+    $("favCuerpo").addEventListener("click", function (e) {
+      var f = e.target.closest("[data-fav]");
+      if (f) { e.stopPropagation(); alternarFav(f.getAttribute("data-fav")); return; }
+      var fc = e.target.closest("[data-fc]");
+      if (fc) { accionFavorito(fc.closest("[data-cid]").getAttribute("data-cid"), fc.getAttribute("data-fc")); return; }
+      var t = e.target.closest(".tarjeta");
+      if (t) abrirDetalle(t.getAttribute("data-id"));
+    });
     $("btnTiempo").addEventListener("click", function () { cargarTiempo(true); });
     $("segDia").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
@@ -1502,7 +1835,9 @@
     $("selUsaCalzado").addEventListener("change", function (e) { guardarAjuste("usaCalzado", e.target.value === "si"); });
     $("btnCrear").addEventListener("click", crearConjuntos);
     $("resultados").addEventListener("click", function (e) {
-      var b = e.target.closest("[data-hoy]"); if (b) guardarHoy(parseInt(b.getAttribute("data-hoy"), 10));
+      var b = e.target.closest("[data-hoy]"); if (b) { guardarHoy(parseInt(b.getAttribute("data-hoy"), 10)); return; }
+      var f = e.target.closest("[data-favc]");
+      if (f && C.resultados[parseInt(f.getAttribute("data-favc"), 10)]) guardarFavorito(C.resultados[parseInt(f.getAttribute("data-favc"), 10)].ids);
     });
 
     $("btnConectar").addEventListener("click", iniciarConexion);
