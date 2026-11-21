@@ -158,6 +158,20 @@
   .conj-nombres { font-size: 14px; margin: 10px 0 0; line-height: 1.45; }
   .razones { margin: 8px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.5; color: var(--texto); }
   .aviso-caja { background: #f6ebd7; color: #7d5f2c; border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-top: 10px; line-height: 1.45; }
+  .t-ahora { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .t-grande { font-size: 38px; font-weight: 300; color: var(--marron); }
+  .t-fila { display: flex; justify-content: space-between; font-size: 14.5px; padding: 5px 0; border-bottom: 1px solid var(--arena); }
+  .t-fila span { color: var(--suave); }
+  .t-partes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 6px; }
+  .t-partes div { background: var(--beige); border-radius: 12px; padding: 9px 6px; text-align: center; font-size: 12.5px; color: var(--suave); }
+  .t-partes b { display: block; font-size: 18px; font-weight: 600; color: var(--texto); margin: 2px 0; }
+  .mini-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 12px; }
+  .mini-grid figure { margin: 0; min-width: 0; }
+  .mini-grid .im { aspect-ratio: 1 / 1; background: var(--arena); border-radius: 10px; overflow: hidden; }
+  .mini-grid img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
+  .mini-grid img.lista { opacity: 1; }
+  .mini-grid figcaption { font-size: 11px; margin-top: 3px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .grupo-tit { font-size: 13px; font-weight: 600; color: var(--marron); margin-top: 8px; }
   .vacio-caja { background: var(--blanco); border-radius: 18px; padding: 20px; line-height: 1.5; font-size: 15px; }
 </style>
 </head>
@@ -253,6 +267,11 @@
   <section id="vConjuntos" hidden>
     <h2 style="margin:4px 2px 6px;font-size:20px">Crear conjuntos</h2>
     <p class="nota">Solo uso prendas que ya has añadido y fotografiado. Nunca invento ropa.</p>
+    <div class="card" id="cardTiempo">
+      <div class="conj-cab"><span>Tiempo en Cartagena</span><button class="linkbtn" id="btnTiempo">Actualizar</button></div>
+      <div class="seg" id="segDia"></div>
+      <div id="tiempoCuerpo" style="margin-top:12px"></div>
+    </div>
     <div class="campo"><span class="etq">¿Qué conjunto quieres?</span><div class="seg wrap" id="segModo"></div></div>
     <div class="campo"><span class="etq">¿Qué tiempo hace?</span><div class="seg wrap" id="segNivel"></div><p class="nota" id="notaNivel" style="margin-top:8px"></p></div>
     <details class="mas">
@@ -841,7 +860,7 @@
   var CAT_ACC = ["Accesorios"];
   var CAT_COMPLEMENTO = ["Accesorios", "Gorros", "Calcetines"];
   var MODOS = [["hoy", "Para hoy"], ["paseo", "Para pasear"], ["arreglado", "Más arreglado"], ["diario", "Cómodo diario"], ["frio", "Días fríos"], ["calor", "Días calurosos"]];
-  var NIVELES = [["auto", "Automático"], ["1", "Calor"], ["2", "Templado"], ["3", "Fresco"], ["4", "Frío"]];
+  var NIVELES = [["auto", "Automático (según el tiempo)"], ["1", "Calor"], ["2", "Templado"], ["3", "Fresco"], ["4", "Frío"]];
   var NIVEL_NOMBRE = { 1: "calor", 2: "templado", 3: "fresco", 4: "frío" };
   var NIVEL_AUTO = { verano: 1, primavera: 2, "otoño": 3, invierno: 4 };
   var NEUTROS = ["Blanco", "Crudo", "Beige", "Arena", "Gris", "Negro", "Azul marino"];
@@ -868,7 +887,7 @@
     3: { "otoño": 1, primavera: 0.8, invierno: 0.7, verano: 0 },
     4: { invierno: 1, "otoño": 0.6, primavera: 0.15, verano: 0 }
   };
-  var C = { modo: "hoy", nivel: "auto", resultados: [], vistos: {} };
+  var C = { modo: "hoy", nivel: "auto", dia: 0, resultados: [], vistos: {} };
 
   function temporadaActual(d) {
     var m = d.getMonth();
@@ -877,9 +896,11 @@
     if (m <= 7) return "verano";
     return "otoño";
   }
-  function fechaHoy() {
+  function dos(n) { return (n < 10 ? "0" : "") + n; }
+  // Fecha del dispositivo (AAAA-MM-DD), con un desplazamiento en días (0 = hoy, 1 = mañana)
+  function fechaHoy(off) {
     var d = new Date();
-    function dos(n) { return (n < 10 ? "0" : "") + n; }
+    d.setDate(d.getDate() + (off || 0));
     return d.getFullYear() + "-" + dos(d.getMonth() + 1) + "-" + dos(d.getDate());
   }
   function sc(p, nivel) {
@@ -1040,6 +1061,7 @@
     var recientes = piezas.filter(function (p) { return ctx.h.ultimo[p.id] !== undefined && ctx.h.ultimo[p.id] <= 2; }).length;
     pen += Math.min(0.3, recientes * 0.1);
     if (C.vistos[clave]) pen += 0.15;
+    if (ctx.capaExtra && it.capa && nivel >= 2) pen -= 0.06; // lluvia o viento: mejor llevar capa
     return { it: it, ids: ids, score: score - pen + Math.random() * 0.03, nivel: nivel };
   }
 
@@ -1084,8 +1106,14 @@
 
   function generarConjuntos() {
     var inv = S.inv, hoy = new Date(), aj = inv.ajustes || {};
-    var nivel = C.modo === "frio" ? 4 : C.modo === "calor" ? 1 : (C.nivel === "auto" ? NIVEL_AUTO[temporadaActual(hoy)] : parseInt(C.nivel, 10));
-    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0, usaCalzado: !!aj.usaCalzado };
+    var nivel, fuente;
+    if (C.modo === "frio") { nivel = 4; fuente = "modo"; }
+    else if (C.modo === "calor") { nivel = 1; fuente = "modo"; }
+    else if (C.nivel !== "auto") { nivel = parseInt(C.nivel, 10); fuente = "manual"; }
+    else { var au = nivelAutoActual(); nivel = au.nivel; fuente = au.fuente; }
+    var rT = resumenTiempo(C.dia);
+    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0, usaCalzado: !!aj.usaCalzado,
+      capaExtra: !!(rT && (rT.probLluvia >= 50 || rT.vientoMax >= 30)) };
     var disp = inv.prendas.filter(function (p) {
       var ropa = p.categoria !== "Calzado" && p.categoria !== "Accesorios";
       return (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, aj) && !(nivel === 1 && p.abrigo === "calentito")
@@ -1132,7 +1160,7 @@
       else if (ctx.rechVaquero > 0 && ctx.rechEstilo === 0) msg = "Con tus prendas, las únicas combinaciones posibles mezclarían dos prendas vaqueras, y prefiero no proponerlas. Una prenda de otro tejido o color lo resolvería.";
       else if (ctx.rechEstilo > 0) msg = "Las combinaciones posibles mezclarían estilos muy distintos (por ejemplo, algo arreglado con algo deportivo), así que no te propongo ninguna. Una prenda de diario sirve de puente. Si alguna prenda tiene mal el estilo, corrígelo en Editar › Más detalles.";
       else msg = "No he encontrado ninguna combinación válida con tus prendas para este tiempo. Puede que las tallas no sean compatibles entre sí.";
-      return { vacio: msg, nivel: nivel };
+      return { vacio: msg, nivel: nivel, fuente: fuente };
     }
 
     cand.sort(function (a, b) { return b.score - a.score; });
@@ -1157,7 +1185,7 @@
       var ex = explicar(o, ctx);
       o.razones = ex.razones; o.avisos = ex.avisos;
     });
-    return { lista: elegidos, nivel: nivel, hayHistorial: h.hayHistorial };
+    return { lista: elegidos, nivel: nivel, fuente: fuente, hayHistorial: h.hayHistorial };
   }
 
   function htmlConjunto(o, i) {
@@ -1179,7 +1207,7 @@
     h += '<div class="conj-nombres">' + piezas.map(function (x) { return esc(x[0].nombre); }).join(" · ") + "</div>";
     h += '<ul class="razones">' + o.razones.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>";
     o.avisos.forEach(function (a) { h += '<div class="aviso-caja">' + esc(a) + "</div>"; });
-    h += '<button class="btn sec" data-hoy="' + i + '">Se lo pone hoy</button></div>';
+    h += '<button class="btn sec" data-hoy="' + i + '">' + (C.dia ? "Se lo pone mañana" : "Se lo pone hoy") + "</button></div>";
     return h;
   }
 
@@ -1201,7 +1229,8 @@
       return;
     }
     var r = generarConjuntos();
-    var cab = "Tiempo considerado: <b>" + NIVEL_NOMBRE[r.nivel] + "</b>.";
+    var origen = { auto_tiempo: " (según el tiempo previsto)", auto_epoca: " (según la época del año, porque no tengo el tiempo)", manual: " (elegido por ti)", modo: "" }[r.fuente] || "";
+    var cab = "Tiempo considerado: <b>" + NIVEL_NOMBRE[r.nivel] + "</b>" + origen + ".";
     if (r.vacio) {
       C.resultados = [];
       cont.innerHTML = '<div class="vacio-caja">' + esc(r.vacio) + "</div>";
@@ -1219,16 +1248,197 @@
   async function guardarHoy(i) {
     var o = C.resultados[i];
     if (!o) return;
-    var f = fechaHoy();
+    var f = fechaHoy(C.dia), cuando = C.dia ? "mañana" : "hoy";
     var ya = (S.inv.calendario || []).some(function (e) { return e.fecha === f; });
-    if (ya && !confirm("Ya hay un conjunto guardado para hoy. ¿Quieres sustituirlo?")) return;
+    if (ya && !confirm("Ya hay un conjunto guardado para " + cuando + ". ¿Quieres sustituirlo?")) return;
     try {
       await modificarInv(function (inv) {
         inv.calendario = inv.calendario.filter(function (e) { return e.fecha !== f; });
         inv.calendario.push({ id: nuevoId(), fecha: f, prendas: o.ids.slice(), modo: C.modo, creada: new Date().toISOString() });
       });
-      toast("Guardado como el conjunto de hoy ✓");
+      toast("Guardado como el conjunto de " + cuando + " ✓");
     } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+
+
+  // ================== Tiempo de Cartagena (Fase 4) ==================
+  var CARTAGENA = { lat: 37.6257, lon: -0.9966 };
+  var W = { datos: null, hora: 0, error: "", cargando: false };
+  var N = function (v) { return typeof v === "number" && isFinite(v); };
+
+  function urlTiempo() {
+    return "https://api.open-meteo.com/v1/forecast?latitude=" + CARTAGENA.lat + "&longitude=" + CARTAGENA.lon
+      + "&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_gusts_10m"
+      + "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m"
+      + "&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max"
+      + "&timezone=Europe%2FMadrid&forecast_days=2&wind_speed_unit=kmh";
+  }
+
+  async function cargarTiempo(forzar) {
+    if (W.cargando) return;
+    if (!forzar && W.datos && Date.now() - W.hora < 15 * 60 * 1000) return;
+    W.cargando = true; W.error = "";
+    pintarTiempo();
+    try {
+      var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 12000);
+      var r;
+      try { r = await fetch(urlTiempo(), { signal: ctl.signal }); } finally { clearTimeout(t); }
+      if (!r.ok) throw new Error("error " + r.status);
+      var d = await r.json();
+      if (!d || !d.hourly || !Array.isArray(d.hourly.time) || !d.current) throw new Error("respuesta inesperada");
+      W.datos = d; W.hora = Date.now();
+    } catch (e) {
+      W.error = "No se pudo consultar el tiempo (" + (e.name === "AbortError" ? "tardó demasiado" : e.message) + ").";
+    } finally { W.cargando = false; }
+    pintarTiempo();
+    pintarControlesConjuntos();
+  }
+
+  function sumarDias(fecha, n) {
+    var p = fecha.split("-").map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
+    return d.getUTCFullYear() + "-" + dos(d.getUTCMonth() + 1) + "-" + dos(d.getUTCDate());
+  }
+  function media(a) { a = a.filter(N); return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : null; }
+  function maximo(a) { a = a.filter(N); return a.length ? Math.max.apply(null, a) : null; }
+  function minimoV(a) { a = a.filter(N); return a.length ? Math.min.apply(null, a) : null; }
+
+  // Resume el día pedido (0 = hoy, 1 = mañana) con la hora de Cartagena que da la propia previsión
+  function resumenTiempo(off) {
+    var d = W.datos; if (!d) return null;
+    var H = d.hourly, ahoraTxt = d.current.time || "";
+    var hoy = ahoraTxt.slice(0, 10), horaAhora = parseInt(ahoraTxt.slice(11, 13), 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(hoy)) return null;
+    var f = sumarDias(hoy, off), idx = [];
+    for (var i = 0; i < H.time.length; i++) if (H.time[i].slice(0, 10) === f) idx.push(i);
+    if (idx.length < 12) return null;
+    function hora(i) { return parseInt(H.time[i].slice(11, 13), 10); }
+    var desde = 8;
+    if (off === 0 && N(horaAhora)) desde = Math.max(8, horaAhora);
+    var ventana = idx.filter(function (i) { return hora(i) >= desde && hora(i) <= 21; });
+    if (ventana.length < 3) ventana = idx.filter(function (i) { return hora(i) >= 8 && hora(i) <= 21; });
+    function col(nombre, ii) { return ii.map(function (i) { return H[nombre] ? H[nombre][i] : null; }); }
+    var sens = col("apparent_temperature", ventana), avg = media(sens), mn = minimoV(sens), mx = maximo(sens);
+    if (!N(avg)) return null;
+    var tEf = 0.7 * avg + 0.3 * mn;
+    var nivel = tEf >= 27 ? 1 : tEf >= 21 ? 2 : tEf >= 15 ? 3 : 4;
+    function parte(h1, h2) {
+      var ii = idx.filter(function (i) { return hora(i) >= h1 && hora(i) <= h2; });
+      return { t: media(col("temperature_2m", ii)), s: media(col("apparent_temperature", ii)), pl: maximo(col("precipitation_probability", ii)) };
+    }
+    var di = d.daily && d.daily.time ? d.daily.time.indexOf(f) : -1;
+    function dia(nombre) { return di >= 0 && d.daily[nombre] ? d.daily[nombre][di] : null; }
+    var mm = dia("precipitation_sum");
+    if (!N(mm)) mm = col("precipitation", ventana).filter(N).reduce(function (s, x) { return s + x; }, 0);
+    return {
+      fecha: f, nivel: nivel, tEf: tEf, avg: avg, minS: mn, maxS: mx, swing: mx - mn,
+      tmin: N(dia("temperature_2m_min")) ? dia("temperature_2m_min") : minimoV(col("temperature_2m", ventana)),
+      tmax: N(dia("temperature_2m_max")) ? dia("temperature_2m_max") : maximo(col("temperature_2m", ventana)),
+      manana: parte(8, 13), tarde: parte(14, 19), noche: parte(20, 23),
+      probLluvia: maximo(col("precipitation_probability", ventana)) || 0, mm: mm || 0,
+      vientoMax: maximo(col("wind_speed_10m", ventana)) || 0,
+      codigo: maximo(col("weather_code", ventana))
+    };
+  }
+
+  function nivelAutoActual() {
+    var r = resumenTiempo(C.dia);
+    if (r) return { nivel: r.nivel, fuente: "auto_tiempo" };
+    return { nivel: NIVEL_AUTO[temporadaActual(new Date())], fuente: "auto_epoca" };
+  }
+
+  function descTiempo(c) {
+    if (!N(c)) return "";
+    if (c === 0) return "despejado";
+    if (c === 1) return "casi despejado";
+    if (c === 2) return "parcialmente nublado";
+    if (c === 3) return "nublado";
+    if (c === 45 || c === 48) return "niebla";
+    if (c >= 51 && c <= 57) return "llovizna";
+    if (c >= 61 && c <= 67) return "lluvia";
+    if (c >= 71 && c <= 77) return "nieve";
+    if (c >= 80 && c <= 82) return "chubascos";
+    if (c === 85 || c === 86) return "chubascos de nieve";
+    if (c >= 95) return "tormenta";
+    return "";
+  }
+  function g(v) { return N(v) ? Math.round(v) + "°" : "–"; }
+
+  // Consejos de ropa según el tiempo (no dependen de lo que haya en el armario)
+  function recomendacion(r, nivel) {
+    var l = [];
+    var capas = { 1: "Una sola capa ligera (camiseta o body).", 2: "Una o dos capas: camiseta o body y algo fino a mano (rebeca o chaleco).",
+      3: "Dos capas: camiseta o body y encima jersey, sudadera o chaqueta.", 4: "Dos o tres capas: camiseta o body, jersey y abrigo o chaqueta gruesa. Gorro si hace viento." }[nivel];
+    var fuera = { 1: "No hace falta chaqueta ni abrigo: ropa ligera.", 2: "Una chaqueta ligera o rebeca a mano por si refresca.",
+      3: "Chaqueta o sudadera mejor que abrigo grueso.", 4: "Abrigo o chaqueta gruesa." }[nivel];
+    l.push(capas); l.push(fuera);
+    if (r.swing >= 8) l.push("Hay mucha diferencia de temperatura a lo largo del día (" + g(r.minS) + " a " + g(r.maxS) + " de sensación): mejor capas fáciles de quitar y poner.");
+    if (N(r.noche.s) && N(r.tarde.s) && r.tarde.s - r.noche.s >= 4) l.push("Por la noche baja a unos " + g(r.noche.s) + ": lleva una capa por si acaso.");
+    if (r.probLluvia >= 50 || r.mm >= 1) l.push("Hay riesgo claro de lluvia (hasta " + Math.round(r.probLluvia) + "%): ropa que se pueda mojar y un impermeable o capota.");
+    else if (r.probLluvia >= 30) l.push("Posibilidad de lluvia (" + Math.round(r.probLluvia) + "%): conviene llevar algo para la lluvia.");
+    if (r.vientoMax >= 30) l.push("Viento fuerte (hasta " + Math.round(r.vientoMax) + " km/h): mejor una capa cortavientos y gorro.");
+    return l;
+  }
+
+  // Prendas del armario que encajan con el tiempo del día
+  function prendasAdecuadas(nivel) {
+    var aj = S.inv.ajustes || {};
+    return S.inv.prendas.filter(function (p) {
+      if (p.estado && p.estado !== "disponible") return false;
+      if (p.categoria === "Pijamas" || (p.categoria === "Calzado" && !aj.usaCalzado)) return false;
+      if (sc(p, nivel) < 0.8 || !tallaValida(p, aj)) return false;
+      if (nivel === 1 && (p.abrigo === "calentito" || ["Abrigos y chaquetas", "Chalecos", "Rebecas"].indexOf(p.categoria) >= 0 || calidez(p) > 1.5)) return false;
+      if (nivel === 2 && p.abrigo === "calentito") return false;
+      return true;
+    });
+  }
+
+  function pintarTiempo() {
+    var el = $("tiempoCuerpo"); if (!el) return;
+    $("btnTiempo").disabled = W.cargando;
+    if (!W.datos) {
+      el.innerHTML = W.cargando ? '<p class="nota">Consultando el tiempo de Cartagena…</p>'
+        : '<div class="aviso-caja">' + esc(W.error || "Sin datos del tiempo.") + " Mientras tanto, el modo automático usa la época del año; también puedes elegir el tiempo a mano más abajo.</div>";
+      return;
+    }
+    var r = resumenTiempo(C.dia);
+    if (!r) { el.innerHTML = '<div class="aviso-caja">No hay previsión completa para ese día.</div>'; return; }
+    var cur = W.datos.current, h = "";
+    if (C.dia === 0 && N(cur.temperature_2m)) {
+      h += '<div class="t-ahora"><span class="t-grande">' + g(cur.temperature_2m) + "</span><span>Sensación " + g(cur.apparent_temperature)
+        + (descTiempo(cur.weather_code) ? " · " + esc(descTiempo(cur.weather_code)) : "") + " · ahora</span></div>";
+    } else if (descTiempo(r.codigo)) {
+      h += '<p class="nota" style="margin:0 0 6px">Cielo: ' + esc(descTiempo(r.codigo)) + ".</p>";
+    }
+    h += '<div class="t-fila"><span>Mínima / máxima</span><b>' + g(r.tmin) + " / " + g(r.tmax) + "</b></div>";
+    h += '<div class="t-fila"><span>Sensación media</span><b>' + g(r.avg) + "</b></div>";
+    h += '<div class="t-fila"><span>Lluvia</span><b>' + Math.round(r.probLluvia) + "% · " + (Math.round(r.mm * 10) / 10) + " mm</b></div>";
+    h += '<div class="t-fila"><span>Viento</span><b>hasta ' + Math.round(r.vientoMax) + " km/h</b></div>";
+    h += '<div class="t-partes">'
+      + "<div>Mañana<b>" + g(r.manana.t) + "</b>sens. " + g(r.manana.s) + "</div>"
+      + "<div>Tarde<b>" + g(r.tarde.t) + "</b>sens. " + g(r.tarde.s) + "</div>"
+      + "<div>Noche<b>" + g(r.noche.t) + "</b>sens. " + g(r.noche.s) + "</div></div>";
+    var nivelUso = C.modo === "frio" ? 4 : C.modo === "calor" ? 1 : (C.nivel === "auto" ? r.nivel : parseInt(C.nivel, 10));
+    h += '<p class="grupo-tit">Qué ponerle (día «' + NIVEL_NOMBRE[r.nivel] + '»)</p><ul class="razones">'
+      + recomendacion(r, r.nivel).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
+    if (nivelUso !== r.nivel) h += '<div class="aviso-caja">Has elegido un tiempo distinto al previsto, así que los conjuntos usarán «' + NIVEL_NOMBRE[nivelUso] + '».</div>';
+    var ad = S.inv ? prendasAdecuadas(nivelUso) : [];
+    if (S.inv && S.inv.prendas.length) {
+      h += '<details class="mas" style="margin:12px 0 4px"><summary>Prendas de tu armario adecuadas (' + ad.length + ')</summary><div class="dentro">';
+      if (!ad.length) h += '<p class="nota">Ninguna de tus prendas encaja bien con este tiempo.</p>';
+      var grupos = {};
+      ad.forEach(function (p) { (grupos[p.categoria] = grupos[p.categoria] || []).push(p); });
+      Object.keys(grupos).forEach(function (c) {
+        h += '<div class="grupo-tit">' + esc(c) + '</div><div class="mini-grid">';
+        grupos[c].forEach(function (p) { h += '<figure><div class="im"><img alt="" data-mini="' + esc(p.id) + '"></div><figcaption>' + esc(p.nombre) + "</figcaption></figure>"; });
+        h += "</div>";
+      });
+      h += "</div></details>";
+    }
+    var hh = new Date(W.hora);
+    h += '<p class="nota" style="margin:10px 0 0">Datos: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Actualizado a las ' + dos(hh.getHours()) + ":" + dos(hh.getMinutes()) + ".</p>";
+    if (W.error) h += '<div class="aviso-caja">' + esc(W.error) + " Muestro los últimos datos que tenía.</div>";
+    el.innerHTML = h;
+    cargarMinis(el);
   }
 
   function pintarPares(cont, pares, actual) {
@@ -1241,16 +1451,23 @@
     });
   }
   function pintarControlesConjuntos() {
+    pintarPares($("segDia"), [["0", "Hoy"], ["1", "Mañana"]], String(C.dia));
     pintarPares($("segModo"), MODOS, C.modo);
     pintarPares($("segNivel"), NIVELES, C.nivel);
     var nota = "";
     if (C.modo === "frio") nota = "Con «Días fríos» se usa siempre el nivel Frío.";
     else if (C.modo === "calor") nota = "Con «Días calurosos» se usa siempre el nivel Calor.";
-    else if (C.nivel === "auto") nota = "Ahora mismo, en modo automático, trato el día como «" + NIVEL_NOMBRE[NIVEL_AUTO[temporadaActual(new Date())]] + "» según la época del año. En la Fase 4 usaré el tiempo real de Cartagena.";
+    else if (C.nivel === "auto") {
+      var au = nivelAutoActual();
+      if (au.fuente === "auto_tiempo") nota = "Según el tiempo previsto, lo trato como un día «" + NIVEL_NOMBRE[au.nivel] + "».";
+      else nota = "No tengo el tiempo ahora mismo, así que uso la época del año (día «" + NIVEL_NOMBRE[au.nivel] + "»). Puedes elegirlo a mano.";
+    }
     $("notaNivel").textContent = nota;
   }
   function prepararConjuntos() {
     pintarControlesConjuntos();
+    pintarTiempo();
+    cargarTiempo(false);
     var aj = S.inv.ajustes || {};
     llenarSelect($("selTallaRopa"), "Sin indicar", TALLAS.filter(function (t) { return !/^Calzado/.test(t) && t !== "Talla única"; }), aj.tallaRopa);
     llenarSelect($("selTallaCalzado"), "Sin indicar", TALLAS.filter(function (t) { return /^Calzado/.test(t); }), aj.tallaCalzado);
@@ -1265,13 +1482,20 @@
 
   // ================== Eventos ==================
   function eventos() {
+    $("btnTiempo").addEventListener("click", function () { cargarTiempo(true); });
+    $("segDia").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      C.dia = parseInt(b.getAttribute("data-v"), 10); C.vistos = {}; C.resultados = [];
+      $("resultados").innerHTML = ""; $("btnCrear").textContent = "Crear conjuntos";
+      pintarControlesConjuntos(); pintarTiempo();
+    });
     $("segModo").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
-      C.modo = b.getAttribute("data-v"); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarControlesConjuntos();
+      C.modo = b.getAttribute("data-v"); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarControlesConjuntos(); pintarTiempo();
     });
     $("segNivel").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
-      C.nivel = b.getAttribute("data-v"); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarControlesConjuntos();
+      C.nivel = b.getAttribute("data-v"); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarControlesConjuntos(); pintarTiempo();
     });
     $("selTallaRopa").addEventListener("change", function (e) { guardarAjuste("tallaRopa", e.target.value); });
     $("selTallaCalzado").addEventListener("change", function (e) { guardarAjuste("tallaCalzado", e.target.value); });
