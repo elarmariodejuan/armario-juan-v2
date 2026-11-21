@@ -149,7 +149,7 @@
   .nota { font-size: 14px; color: var(--suave); line-height: 1.45; margin: 4px 2px 14px; }
   .conj { background: var(--blanco); border-radius: 18px; padding: 14px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(122,100,80,.10); }
   .conj-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; }
-  .conj-fotos { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+  .conj-fotos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .conj-fotos figure { margin: 0; text-align: center; min-width: 0; }
   .conj-fotos .im { aspect-ratio: 1 / 1; background: var(--arena); border-radius: 12px; overflow: hidden; }
   .conj-fotos img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
@@ -256,9 +256,10 @@
     <div class="campo"><span class="etq">¿Qué conjunto quieres?</span><div class="seg wrap" id="segModo"></div></div>
     <div class="campo"><span class="etq">¿Qué tiempo hace?</span><div class="seg wrap" id="segNivel"></div><p class="nota" id="notaNivel" style="margin-top:8px"></p></div>
     <details class="mas">
-      <summary>Talla de Juan (opcional)</summary>
+      <summary>Ajustes de Juan (opcional)</summary>
       <div class="dentro">
-        <p class="nota">Si la indicas, no te propondré prendas que le queden muy pequeñas o grandes.</p>
+        <p class="nota">Si indicas su talla, no te propondré prendas que le queden muy pequeñas o grandes.</p>
+        <div class="campo"><label for="selUsaCalzado">¿Usa calzado?</label><select id="selUsaCalzado"><option value="no">No, todavía no anda</option><option value="si">Sí, usa calzado</option></select></div>
         <div class="campo"><label for="selTallaRopa">Talla de ropa</label><select id="selTallaRopa"></select></div>
         <div class="campo"><label for="selTallaCalzado">Número de calzado</label><select id="selTallaCalzado"></select></div>
       </div>
@@ -293,8 +294,8 @@
   var K_VERIFIER = "armario_pkce_verifier";
   var K_STATE = "armario_pkce_state";
 
-  var CATS_BASE = ["Camisetas y partes de arriba", "Pantalones y partes de abajo", "Sudaderas", "Jerséis", "Camisas",
-    "Conjuntos", "Monos", "Vestidos", "Abrigos y chaquetas", "Chalecos", "Pijamas", "Calzado", "Accesorios"];
+  var CATS_BASE = ["Camisetas y partes de arriba", "Bodies", "Pantalones y partes de abajo", "Petos", "Sudaderas", "Jerséis", "Rebecas", "Camisas",
+    "Conjuntos", "Monos", "Abrigos y chaquetas", "Chalecos", "Pijamas", "Calzado", "Calcetines", "Gorros", "Accesorios"];
   var TALLAS = ["0-3 meses", "3-6 meses", "6-9 meses", "9-12 meses", "12-18 meses", "18-24 meses",
     "2 años", "3 años", "4 años", "5 años", "6 años", "7 años", "8 años", "9 años", "10 años", "11 años", "12 años",
     "Calzado 18", "Calzado 19", "Calzado 20", "Calzado 21", "Calzado 22", "Calzado 23", "Calzado 24", "Calzado 25",
@@ -459,13 +460,14 @@
 
   // ================== Inventario ==================
   function inventarioNuevo() {
-    return { version: 1, creado: new Date().toISOString(), ajustes: { tallaRopa: "", tallaCalzado: "" }, categoriasExtra: [], prendas: [], conjuntos: [], calendario: [], sugerencias: [] };
+    return { version: 1, creado: new Date().toISOString(), ajustes: { tallaRopa: "", tallaCalzado: "", usaCalzado: false }, categoriasExtra: [], prendas: [], conjuntos: [], calendario: [], sugerencias: [] };
   }
   function normalizarInv(inv) {
     ["prendas", "conjuntos", "calendario", "sugerencias", "categoriasExtra"].forEach(function (k) { if (!Array.isArray(inv[k])) inv[k] = []; });
     if (!inv.ajustes || typeof inv.ajustes !== "object") inv.ajustes = {};
     if (typeof inv.ajustes.tallaRopa !== "string") inv.ajustes.tallaRopa = "";
     if (typeof inv.ajustes.tallaCalzado !== "string") inv.ajustes.tallaCalzado = "";
+    if (typeof inv.ajustes.usaCalzado !== "boolean") inv.ajustes.usaCalzado = false;
     return inv;
   }
   async function leerInventario() {
@@ -492,7 +494,8 @@
 
   function todasCategorias() {
     var extra = (S.inv && S.inv.categoriasExtra) || [];
-    return CATS_BASE.concat(extra);
+    var vistas = CATS_BASE.map(norm);
+    return CATS_BASE.concat(extra.filter(function (c) { var n = norm(c); if (vistas.indexOf(n) >= 0) return false; vistas.push(n); return true; }));
   }
 
   // ================== Fotos ==================
@@ -828,12 +831,15 @@
   }
 
   // ================== Estilista (Fase 3) ==================
-  var CAT_ARRIBA = ["Camisetas y partes de arriba", "Camisas", "Jerséis", "Sudaderas"];
-  var CAT_ABAJO = ["Pantalones y partes de abajo"];
+  var CAT_ARRIBA = ["Camisetas y partes de arriba", "Bodies", "Camisas", "Jerséis", "Sudaderas"];
+  var CAT_ABAJO = ["Pantalones y partes de abajo", "Petos"];
   var CAT_UNO = ["Conjuntos", "Monos", "Vestidos"];
-  var CAT_CAPA = ["Abrigos y chaquetas", "Chalecos", "Sudaderas", "Jerséis"];
+  var CAT_CAPA = ["Abrigos y chaquetas", "Chalecos", "Rebecas", "Sudaderas", "Jerséis"];
   var CAT_CALZADO = ["Calzado"];
+  var CAT_CALCETIN = ["Calcetines"];
+  var CAT_GORRO = ["Gorros"];
   var CAT_ACC = ["Accesorios"];
+  var CAT_COMPLEMENTO = ["Accesorios", "Gorros", "Calcetines"];
   var MODOS = [["hoy", "Para hoy"], ["paseo", "Para pasear"], ["arreglado", "Más arreglado"], ["diario", "Cómodo diario"], ["frio", "Días fríos"], ["calor", "Días calurosos"]];
   var NIVELES = [["auto", "Automático"], ["1", "Calor"], ["2", "Templado"], ["3", "Fresco"], ["4", "Frío"]];
   var NIVEL_NOMBRE = { 1: "calor", 2: "templado", 3: "fresco", 4: "frío" };
@@ -887,7 +893,7 @@
     var a = { ligero: 1, medio: 2, calentito: 3 }[p.abrigo];
     if (a) return a;
     var d = { "Camisetas y partes de arriba": 1, "Camisas": 1, "Jerséis": 2, "Sudaderas": 2, "Chalecos": 1.5, "Abrigos y chaquetas": 2.5,
-      "Pantalones y partes de abajo": 1.5, "Conjuntos": 1.5, "Monos": 1.5, "Vestidos": 1 }[p.categoria];
+      "Pantalones y partes de abajo": 1.5, "Conjuntos": 1.5, "Monos": 1.5, "Vestidos": 1, "Bodies": 1, "Petos": 1.5, "Rebecas": 2 }[p.categoria];
     return d || 1.5;
   }
   function textoPrenda(p) { return norm((p.nombre || "") + " " + (p.tipo || "") + " " + (p.tejido || "")); }
@@ -919,7 +925,7 @@
     return (i < 0 || /^Calzado/.test(t) || t === "Talla única") ? -1 : i;
   }
   function tallaValida(p, aj) {
-    if (!p.talla || p.categoria === "Accesorios") return true;
+    if (!p.talla || CAT_COMPLEMENTO.indexOf(p.categoria) >= 0) return true;
     if (p.categoria === "Calzado") {
       var ref = num(aj.tallaCalzado), n = num(p.talla);
       if (isNaN(ref) || isNaN(n)) return true;
@@ -980,7 +986,18 @@
     if (it.calzado) { pares.push([it.calzado, B || A, 1]); if (B) pares.push([it.calzado, A, 0.5]); }
     return pares;
   }
-  function piezasDe(it) { return [it.arriba, it.abajo, it.uno, it.capa, it.calzado, it.acc].filter(Boolean); }
+  function piezasDe(it) { return [it.arriba, it.abajo, it.uno, it.capa, it.calzado, it.calcetin, it.gorro, it.acc].filter(Boolean); }
+  function esComplemento(p) { return CAT_COMPLEMENTO.indexOf(p.categoria) >= 0; }
+  // Elige el complemento (calcetines, gorro, accesorio) cuyo color mejor combina con las prendas de referencia
+  function mejorComplemento(lista, refs, h, minimo) {
+    var mejor = null, rs = refs.filter(Boolean);
+    lista.forEach(function (a) {
+      var base = rs.length ? rs.reduce(function (s, r) { return s + colorPar(a.color, r.color); }, 0) / rs.length : 0.8;
+      var s = base + 0.3 * novedad(a, h) + (a.favorito ? 0.05 : 0);
+      if (base >= minimo && (!mejor || s > mejor.s)) mejor = { a: a, s: s };
+    });
+    return mejor ? mejor.a : null;
+  }
   function claveIds(ids) { return ids.slice().sort().join("|"); }
 
   function evaluar(it, ctx) {
@@ -1045,7 +1062,7 @@
     if (estamp.length >= 2) avisos.push("Hay dos prendas con estampado o rayas (" + nombresLista(estamp) + "): puede quedar recargado.");
     var sinColor = piezas.filter(function (p) { return !p.color; });
     if (sinColor.length) avisos.push("Sin color indicado en " + nombresLista(sinColor) + ": no he podido comprobar del todo si combinan.");
-    var sinTalla = piezas.filter(function (p) { return !p.talla; });
+    var sinTalla = piezas.filter(function (p) { return !p.talla && !esComplemento(p); });
     if (sinTalla.length) avisos.push("Sin talla en " + nombresLista(sinTalla) + ": no he podido comprobar la talla.");
     razones.push("Abrigo pensado para un día " + NIVEL_NOMBRE[o.nivel] + (it.capa ? ", con una capa extra para el fresco" : "") + ".");
     if (ctx.h.hayHistorial) {
@@ -1059,7 +1076,7 @@
     razones.push("Estilo coherente: conjunto " + NOMBRE_ESTILO[maxEst === minEst ? maxEst : 1] + ".");
     if (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) avisos.push("«" + it.calzado.nombre + "» es de un estilo muy distinto al resto de la ropa.");
     if (piezas.some(function (p) { return p.favorito; })) razones.push("Incluye una prenda favorita.");
-    if (!it.calzado) avisos.push("Falta calzado: no hay calzado disponible adecuado para este tiempo y talla (o todavía no has añadido ninguno).");
+    if (!it.calzado && ctx.usaCalzado) avisos.push("Falta calzado: no hay calzado disponible adecuado para este tiempo y talla (o todavía no has añadido ninguno).");
     return { razones: razones, avisos: avisos };
   }
 
@@ -1068,7 +1085,7 @@
   function generarConjuntos() {
     var inv = S.inv, hoy = new Date(), aj = inv.ajustes || {};
     var nivel = C.modo === "frio" ? 4 : C.modo === "calor" ? 1 : (C.nivel === "auto" ? NIVEL_AUTO[temporadaActual(hoy)] : parseInt(C.nivel, 10));
-    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0 };
+    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0, usaCalzado: !!aj.usaCalzado };
     var disp = inv.prendas.filter(function (p) {
       var ropa = p.categoria !== "Calzado" && p.categoria !== "Accesorios";
       return (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, aj) && !(nivel === 1 && p.abrigo === "calentito")
@@ -1080,8 +1097,9 @@
         .sort(function (a, b) { return b.s - a.s; }).slice(0, n).map(function (x) { return x.p; });
     }
     var arribas = mejores(de(CAT_ARRIBA), 10), abajos = mejores(de(CAT_ABAJO), 10), unos = mejores(de(CAT_UNO), 8);
-    var zapatos = mejores(de(CAT_CALZADO), 8), capas = nivel > 1 ? mejores(de(CAT_CAPA), 10) : [];
-    var accesorios = de(CAT_ACC);
+    var zapatos = aj.usaCalzado ? mejores(de(CAT_CALZADO), 8) : [], capas = nivel > 1 ? mejores(de(CAT_CAPA), 10) : [];
+    function complementos(cats) { return de(cats).filter(function (p) { return sc(p, nivel) >= 0.7; }); }
+    var accesorios = complementos(CAT_ACC), calcetines = complementos(CAT_CALCETIN), gorros = complementos(CAT_GORRO);
 
     var bases = [];
     arribas.forEach(function (a) { abajos.forEach(function (b) { bases.push({ arriba: a, abajo: b }); }); });
@@ -1128,15 +1146,13 @@
     });
 
     elegidos.forEach(function (o) {
-      if (accesorios.length) {
-        var A = o.it.arriba || o.it.uno, mejor = null;
-        accesorios.forEach(function (a) {
-          var s = (colorPar(a.color, A.color) + (o.it.abajo ? colorPar(a.color, o.it.abajo.color) : colorPar(a.color, A.color))) / 2 + 0.3 * novedad(a, h) + (a.favorito ? 0.05 : 0);
-          var base = (colorPar(a.color, A.color) + (o.it.abajo ? colorPar(a.color, o.it.abajo.color) : colorPar(a.color, A.color))) / 2;
-          if (base >= 0.75 && (!mejor || s > mejor.s)) mejor = { a: a, s: s };
-        });
-        if (mejor) { o.it.acc = mejor.a; o.ids.push(mejor.a.id); }
-      }
+      var Asup = o.it.capa || o.it.arriba || o.it.uno, Binf = o.it.abajo || o.it.uno;
+      var acc = mejorComplemento(accesorios, [Asup, Binf], h, 0.75);
+      var calc = mejorComplemento(calcetines, [o.it.calzado, Binf], h, 0.65);
+      var gor = mejorComplemento(gorros, [Asup], h, 0.75);
+      if (calc) { o.it.calcetin = calc; o.ids.push(calc.id); }
+      if (gor) { o.it.gorro = gor; o.ids.push(gor.id); }
+      if (acc) { o.it.acc = acc; o.ids.push(acc.id); }
       C.vistos[claveIds(o.ids)] = 1;
       var ex = explicar(o, ctx);
       o.razones = ex.razones; o.avisos = ex.avisos;
@@ -1150,6 +1166,8 @@
     else { piezas.push([it.arriba, "Arriba"]); piezas.push([it.abajo, "Abajo"]); }
     if (it.capa) piezas.push([it.capa, "Capa"]);
     if (it.calzado) piezas.push([it.calzado, "Calzado"]);
+    if (it.calcetin) piezas.push([it.calcetin, "Calcetines"]);
+    if (it.gorro) piezas.push([it.gorro, "Gorro"]);
     if (it.acc) piezas.push([it.acc, "Accesorio"]);
     var h = '<div class="conj" data-ids="' + esc(o.ids.join(",")) + '">'
       + '<div class="conj-cab"><span>Propuesta ' + (i + 1) + '</span><span class="chip">' + etiquetaScore(o.score) + "</span></div>"
@@ -1236,12 +1254,13 @@
     var aj = S.inv.ajustes || {};
     llenarSelect($("selTallaRopa"), "Sin indicar", TALLAS.filter(function (t) { return !/^Calzado/.test(t) && t !== "Talla única"; }), aj.tallaRopa);
     llenarSelect($("selTallaCalzado"), "Sin indicar", TALLAS.filter(function (t) { return /^Calzado/.test(t); }), aj.tallaCalzado);
+    $("selUsaCalzado").value = aj.usaCalzado ? "si" : "no";
   }
   async function guardarAjuste(clave, valor) {
     try {
-      await modificarInv(function (inv) { inv.ajustes = Object.assign({ tallaRopa: "", tallaCalzado: "" }, inv.ajustes); inv.ajustes[clave] = valor; });
-      toast("Talla guardada ✓");
-    } catch (e) { toast("No se pudo guardar la talla"); }
+      await modificarInv(function (inv) { inv.ajustes = Object.assign({ tallaRopa: "", tallaCalzado: "", usaCalzado: false }, inv.ajustes); inv.ajustes[clave] = valor; });
+      toast("Guardado ✓");
+    } catch (e) { toast("No se pudo guardar el ajuste"); }
   }
 
   // ================== Eventos ==================
@@ -1256,6 +1275,7 @@
     });
     $("selTallaRopa").addEventListener("change", function (e) { guardarAjuste("tallaRopa", e.target.value); });
     $("selTallaCalzado").addEventListener("change", function (e) { guardarAjuste("tallaCalzado", e.target.value); });
+    $("selUsaCalzado").addEventListener("change", function (e) { guardarAjuste("usaCalzado", e.target.value === "si"); });
     $("btnCrear").addEventListener("click", crearConjuntos);
     $("resultados").addEventListener("click", function (e) {
       var b = e.target.closest("[data-hoy]"); if (b) guardarHoy(parseInt(b.getAttribute("data-hoy"), 10));
