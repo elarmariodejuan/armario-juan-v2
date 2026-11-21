@@ -227,6 +227,7 @@
     <details class="mas" id="masDetalles">
       <summary>Más detalles (opcional)</summary>
       <div class="dentro">
+        <div class="campo"><span class="etq">Estilo</span><div class="seg" id="segEstilo"></div><p class="nota" style="margin:6px 0 0">Sirve para no mezclar, por ejemplo, una chaqueta arreglada con un chándal.</p></div>
         <div class="campo"><label for="fTipo">Tipo de prenda</label><input type="text" id="fTipo" placeholder="Ej.: manga larga, bermuda, zapatillas" maxlength="60"></div>
         <div class="campo">
           <label for="fTalla">Talla</label>
@@ -300,6 +301,9 @@
     "Calzado 26", "Calzado 27", "Calzado 28", "Calzado 29", "Calzado 30", "Calzado 31", "Calzado 32", "Calzado 33", "Calzado 34", "Talla única"];
   var TEMPORADAS = ["primavera", "verano", "otoño", "invierno", "todo el año"];
   var ABRIGOS = ["ligero", "medio", "calentito"];
+  var ESTILOS = [["deportivo", "Cómodo / deportivo"], ["diario", "Diario"], ["arreglado", "Arreglado"]];
+  var NIV_ESTILO = { deportivo: 0, diario: 1, arreglado: 2 };
+  var NOMBRE_ESTILO = { 0: "cómodo / deportivo", 1: "de diario", 2: "arreglado" };
   var ESTADOS = ["disponible", "guardada", "fuera de temporada"];
   var COLORES = [
     ["Blanco", "#ffffff"], ["Crudo", "#f1e9da"], ["Beige", "#d9c7a6"], ["Arena", "#c8b08a"], ["Marrón", "#7a5a3f"],
@@ -655,6 +659,7 @@
     if ((p.colores2 || []).length) fila("Otros colores", p.colores2.map(function (c) { return '<span class="punto" style="background:' + colorHex(c) + '"></span>' + esc(c); }).join("  "));
     fila("Temporada", esc(p.temporada));
     fila("Abrigo", esc(p.abrigo));
+    fila("Estilo", p.estilo ? esc((ESTILOS.filter(function (x) { return x[0] === p.estilo; })[0] || [0, p.estilo])[1]) : "");
     fila("Tejido", esc(p.tejido));
     fila("Estado", esc(p.estado));
     $("hoja").innerHTML = '<div class="grande"><img id="imgGrande" alt=""></div>'
@@ -722,6 +727,7 @@
       color: p ? (p.color || "") : "",
       colores2: p ? (p.colores2 || []).slice() : [],
       abrigo: p ? (p.abrigo || "") : "",
+      estilo: p ? (p.estilo || "") : "",
       favorito: p ? !!p.favorito : false
     };
     $("tituloForm").textContent = p ? "Editar prenda" : "Añadir prenda";
@@ -754,6 +760,7 @@
     pintarColores($("coloresS"), F.colores2, true);
     $("nomColorP").textContent = F.color;
     pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
+    pintarPares($("segEstilo"), ESTILOS, F.estilo);
     pintarFavForm();
     $("masDetalles").open = !!p;
   }
@@ -794,7 +801,7 @@
       var datos = {
         nombre: nombre, categoria: cat, tipo: $("fTipo").value.trim(), talla: talla,
         color: F.color, colores2: F.colores2.filter(function (x) { return x !== F.color; }),
-        temporada: $("fTemp2").value, abrigo: F.abrigo, tejido: $("fTejido").value.trim(),
+        temporada: $("fTemp2").value, abrigo: F.abrigo, estilo: F.estilo, tejido: $("fTejido").value.trim(),
         estado: $("fEstado").value || "disponible", favorito: F.favorito
       };
       await modificarInv(function (inv) {
@@ -948,22 +955,18 @@
     if (u === undefined) return 1;
     return Math.min(1, u / 14) * (1 - Math.min(0.5, (h.cnt[p.id] || 0) / 10));
   }
+  // Estilo de una prenda: 0 = cómodo/deportivo, 1 = diario, 2 = arreglado.
+  // Si no se ha indicado, se deduce de la categoría y de palabras del nombre.
+  function estiloDe(p) {
+    if (NIV_ESTILO[p.estilo] !== undefined) return NIV_ESTILO[p.estilo];
+    var t = textoPrenda(p);
+    if (p.categoria === "Sudaderas" || /chandal|deportiv|jogger|sudadera|pijama|running|futbol/.test(t)) return 0;
+    if (p.categoria === "Camisas" || p.categoria === "Chalecos" || /vestir|polo|blazer|americana|mocasin|zapato|chino|lino|elegante|arreglad/.test(t)) return 2;
+    return 1;
+  }
   function afinidad(p, modo) {
-    var t = textoPrenda(p), a = 0.5;
-    if (modo === "arreglado") {
-      if (p.categoria === "Camisas") a += 0.4;
-      if (/vestir|polo|chaleco|blazer|americana|mocasin|zapato|chino|lino/.test(t)) a += 0.3;
-      if (p.categoria === "Sudaderas") a -= 0.3;
-      if (/chandal|deportiv|sudadera|pijama/.test(t)) a -= 0.3;
-    } else if (modo === "diario") {
-      if (/algodon|punto|sudadera|chandal|jogger|zapatilla/.test(t)) a += 0.2;
-      if (p.categoria === "Sudaderas" || p.categoria === "Camisetas y partes de arriba") a += 0.2;
-      if (/vestir|zapato|blazer/.test(t)) a -= 0.3;
-    } else if (modo === "paseo") {
-      if (/zapatilla|deportiv|vaquero|algodon/.test(t)) a += 0.2;
-      if (/vestir/.test(t)) a -= 0.1;
-    }
-    return Math.max(0, Math.min(1, a));
+    var tabla = { arreglado: [0.1, 0.5, 1], diario: [0.9, 1, 0.2], paseo: [0.8, 1, 0.4] }[modo];
+    return tabla ? tabla[estiloDe(p)] : 0.5;
   }
   function puntuarPieza(p, ctx) {
     return 0.5 * sc(p, ctx.nivel) + 0.3 * novedad(p, ctx.h) + 0.2 * afinidad(p, ctx.modo) + (p.favorito ? 0.05 : 0);
@@ -982,6 +985,11 @@
   function evaluar(it, ctx) {
     var piezas = piezasDe(it);
     if (!compatTallas(piezas.filter(function (p) { return p.categoria !== "Calzado" && p.categoria !== "Accesorios"; }))) return null;
+    // Estilo: nunca se mezcla algo arreglado con algo deportivo
+    var ropaEst = [it.arriba, it.abajo, it.uno, it.capa].filter(Boolean).map(estiloDe);
+    var maxEst = Math.max.apply(null, ropaEst);
+    if (maxEst - Math.min.apply(null, ropaEst) >= 2) { ctx.rechEstilo++; return null; }
+    var penEstilo = (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) ? 0.12 : 0;
     var pares = paresDe(it), sw = 0, ss = 0;
     pares.forEach(function (x) { sw += x[2]; ss += x[2] * colorPar(x[0].color, x[1].color); });
     var color = pares.length ? ss / sw : 0.9;
@@ -1007,7 +1015,7 @@
 
     var score = 0.34 * color + 0.18 * temporada + 0.16 * termico + 0.2 * nov + 0.07 * afin + 0.05 * fav;
     var ids = piezas.map(function (p) { return p.id; });
-    var clave = claveIds(ids), pen = 0;
+    var clave = claveIds(ids), pen = penEstilo;
     ctx.h.conjuntos.forEach(function (c) { if (c.dias <= 14 && claveIds(c.ids) === clave) pen += 0.5; });
     var recientes = piezas.filter(function (p) { return ctx.h.ultimo[p.id] !== undefined && ctx.h.ultimo[p.id] <= 2; }).length;
     pen += Math.min(0.3, recientes * 0.1);
@@ -1043,6 +1051,10 @@
       if (nunca.length) razones.push("Incluye prendas que aún no ha llevado: " + nombresLista(nunca.slice(0, 2)) + ".");
       if (viejas.length) razones.push("«" + viejas[0].nombre + "» lleva " + ctx.h.ultimo[viejas[0].id] + " días sin usarse.");
     }
+    var ropaEst = [it.arriba, it.abajo, it.uno, it.capa].filter(Boolean).map(estiloDe);
+    var maxEst = Math.max.apply(null, ropaEst), minEst = Math.min.apply(null, ropaEst);
+    razones.push("Estilo coherente: conjunto " + NOMBRE_ESTILO[maxEst === minEst ? maxEst : 1] + ".");
+    if (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) avisos.push("«" + it.calzado.nombre + "» es de un estilo muy distinto al resto de la ropa.");
     if (piezas.some(function (p) { return p.favorito; })) razones.push("Incluye una prenda favorita.");
     if (!it.calzado) avisos.push("Falta calzado: no hay calzado disponible adecuado para este tiempo y talla (o todavía no has añadido ninguno).");
     return { razones: razones, avisos: avisos };
@@ -1053,9 +1065,11 @@
   function generarConjuntos() {
     var inv = S.inv, hoy = new Date(), aj = inv.ajustes || {};
     var nivel = C.modo === "frio" ? 4 : C.modo === "calor" ? 1 : (C.nivel === "auto" ? NIVEL_AUTO[temporadaActual(hoy)] : parseInt(C.nivel, 10));
-    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h };
+    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0 };
     var disp = inv.prendas.filter(function (p) {
-      return (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, aj) && !(nivel === 1 && p.abrigo === "calentito");
+      var ropa = p.categoria !== "Calzado" && p.categoria !== "Accesorios";
+      return (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, aj) && !(nivel === 1 && p.abrigo === "calentito")
+        && !(C.modo === "arreglado" && ropa && estiloDe(p) === 0);
     });
     function de(cats) { return disp.filter(function (p) { return cats.indexOf(p.categoria) >= 0; }); }
     function mejores(lista, n) {
@@ -1094,6 +1108,7 @@
       }
       var msg;
       if (falta.length) msg = "No puedo formar un conjunto completo. Te falta " + falta.join(" y ") + " adecuada para este tiempo y esta talla (o un conjunto/mono).";
+      else if (ctx.rechEstilo > 0) msg = "Las combinaciones posibles mezclarían estilos muy distintos (por ejemplo, algo arreglado con algo deportivo), así que no te propongo ninguna. Una prenda de diario sirve de puente. Si alguna prenda tiene mal el estilo, corrígelo en Editar › Más detalles.";
       else msg = "No he encontrado ninguna combinación válida con tus prendas para este tiempo. Puede que las tallas no sean compatibles entre sí.";
       return { vacio: msg, nivel: nivel };
     }
@@ -1323,6 +1338,12 @@
       var v = b.getAttribute("data-v");
       F.abrigo = F.abrigo === v ? "" : v;
       pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
+    });
+    $("segEstilo").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var v = b.getAttribute("data-v");
+      F.estilo = F.estilo === v ? "" : v;
+      pintarPares($("segEstilo"), ESTILOS, F.estilo);
     });
     $("btnFavForm").addEventListener("click", function () { F.favorito = !F.favorito; pintarFavForm(); });
     $("btnGuardar").addEventListener("click", guardarPrenda);
