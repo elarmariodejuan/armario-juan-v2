@@ -250,6 +250,10 @@
     <div class="grid" id="grid"></div>
     <div class="vacio" id="vacio" hidden>Todavía no hay prendas.<br>Pulsa <b>Añadir</b> abajo para hacer la primera foto.</div>
     <div class="vacio" id="sinResultados" hidden>Ninguna prenda coincide con la búsqueda o los filtros.</div>
+    <details class="mas" id="catDet" style="margin-top:18px"><summary>Mis categorías</summary><div class="dentro">
+      <p class="nota">Las categorías básicas están fijas porque el estilista las usa para saber qué es cada prenda. Aquí puedes cambiar el nombre o borrar las que hayas creado tú.</p>
+      <div id="catLista"></div><p class="nota" id="msgCat"></p>
+    </div></details>
     <details class="mas" id="copiaDet" style="margin-top:18px"><summary>Copia de seguridad</summary><div class="dentro">
       <p class="nota">La copia guarda tus prendas, conjuntos, calendario y sugerencias. Las fotos ya están a salvo en tu Dropbox, no hace falta copiarlas.</p>
       <button class="btn" id="btnCopiaDropbox">Guardar copia en Dropbox</button>
@@ -1010,6 +1014,30 @@
     return d || 1.5;
   }
   function textoPrenda(p) { return norm((p.nombre || "") + " " + (p.tipo || "") + " " + (p.tejido || "")); }
+  // Si el nombre dice chaqueta/abrigo/chaleco/rebeca, cuenta como capa aunque esté guardada como "parte de arriba".
+  // "Camisa vaquera" NO es una capa: sigue siendo parte de arriba.
+  function catEf(p) {
+    var c = p.categoria;
+    if (c !== "Camisetas y partes de arriba" && c !== "Camisas") return c;
+    var t = textoPrenda(p);
+    if (/\bcamisa\b|\bcamiseta\b|\bbody\b/.test(t)) return c;
+    if (/\bchaleco/.test(t)) return "Chalecos";
+    if (/\brebeca/.test(t)) return "Rebecas";
+    if (/\b(chaqueta|cazadora|chubasquero|parka|anorak|gabardina|abrigo|plumifero|plumas|bomber|blazer|americana)/.test(t)) return "Abrigos y chaquetas";
+    return c;
+  }
+  // Capa "gruesa" = abrigo de verdad (anorak, parka, plumífero, chaquetón, abrigo). Las vaqueras no cuentan.
+  function esCapaGruesa(c) {
+    if (/vaquer|denim|tejan|\bjeans?\b/.test(textoPrenda(c))) return false;
+    return c.abrigo === "calentito" || /\b(parka|anorak|plumifero|plumas|plumon|chaqueton|abrigo|gabardina|trenca|cazadora forrada)/.test(textoPrenda(c));
+  }
+  // Sobre una sudadera (o un jersey grueso) solo va un abrigo grueso; una chaqueta fina quedaría ajustada y abultada.
+  function capaValidaSobre(a, c) {
+    if (!a || !c) return true;
+    var catA = catEf(a);
+    var abultado = catA === "Sudaderas" || (catA === "Jerséis" && a.abrigo === "calentito");
+    return !abultado || esCapaGruesa(c);
+  }
   function esVaquera(p) { return /vaquer|denim|tejan|\bjeans?\b/.test(textoPrenda(p)); }
   function esEstampada(p) { return /rayas|estampad|cuadros|lunares|flores|dibujo|print|vichy|tartan/.test(textoPrenda(p)); }
 
@@ -1210,7 +1238,7 @@
       var ropa = p.categoria !== "Calzado" && p.categoria !== "Accesorios";
       return (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, aj) && !(nivel === 1 && p.abrigo === "calentito")
         && !(C.modo === "arreglado" && ropa && estiloDe(p) === 0);
-    });
+    }).map(function (p) { var ef = catEf(p); return ef === p.categoria ? p : Object.assign({}, p, { categoria: ef }); });
     function de(cats) { return disp.filter(function (p) { return cats.indexOf(p.categoria) >= 0; }); }
     function mejores(lista, n) {
       return lista.map(function (p) { return { p: p, s: puntuarPieza(p, ctx) + Math.random() * 0.05 }; })
@@ -1230,6 +1258,7 @@
       var capasOk = [null];
       capas.forEach(function (c) {
         if (base.arriba && base.arriba.id === c.id) return;
+        if (!capaValidaSobre(base.arriba, c)) return;
         if ((c.categoria === "Sudaderas" || c.categoria === "Jerséis") && base.arriba && (base.arriba.categoria === "Sudaderas" || base.arriba.categoria === "Jerséis")) return;
         capasOk.push(c);
       });
@@ -1748,6 +1777,42 @@
 
 
 
+
+  // ================== Gestionar categorías propias ==================
+  function renderCategorias() {
+    var extra = (S.inv && S.inv.categoriasExtra) || [], el = $("catLista");
+    if (!extra.length) { el.innerHTML = '<p class="nota">Todavía no has creado ninguna categoría propia.</p>'; return; }
+    el.innerHTML = extra.map(function (c, i) {
+      var n = S.inv.prendas.filter(function (p) { return p.categoria === c; }).length;
+      return '<div class="barra" style="align-items:center;gap:8px"><span>' + esc(c) + ' <small style="color:var(--suave)">(' + n + ')</small></span><span>'
+        + '<button class="linkbtn" data-cat="ren" data-i="' + i + '">Renombrar</button> · <button class="linkbtn" data-cat="del" data-i="' + i + '">Eliminar</button></span></div>';
+    }).join("");
+  }
+  async function renombrarCategoria(i) {
+    var viejo = S.inv.categoriasExtra[i], m = $("msgCat");
+    var nuevo = (prompt("Nuevo nombre para «" + viejo + "»:", viejo) || "").trim();
+    if (!nuevo || nuevo === viejo) return;
+    var ya = CATS_BASE.concat(S.inv.categoriasExtra).some(function (x) { return norm(x) === norm(nuevo) && norm(x) !== norm(viejo); });
+    if (ya) { m.textContent = "Ya existe una categoría con ese nombre."; return; }
+    try {
+      await modificarInv(function (inv) {
+        var k = inv.categoriasExtra.indexOf(viejo); if (k >= 0) inv.categoriasExtra[k] = nuevo;
+        inv.prendas.forEach(function (p) { if (p.categoria === viejo) p.categoria = nuevo; });
+      });
+      m.textContent = "Renombrada a «" + nuevo + "»."; renderCategorias(); renderArmario();
+    } catch (e) { m.textContent = "No se pudo guardar: " + e.message; }
+  }
+  async function eliminarCategoria(i) {
+    var c = S.inv.categoriasExtra[i], m = $("msgCat");
+    var n = S.inv.prendas.filter(function (p) { return p.categoria === c; }).length;
+    if (n > 0) { m.textContent = "No se puede eliminar «" + c + "»: tiene " + n + (n === 1 ? " prenda" : " prendas") + ". Cámbialas primero a otra categoría (Editar prenda)."; return; }
+    if (!confirm("¿Eliminar la categoría «" + c + "»? No tiene prendas.")) return;
+    try {
+      await modificarInv(function (inv) { inv.categoriasExtra = inv.categoriasExtra.filter(function (x) { return x !== c; }); });
+      m.textContent = "Categoría eliminada."; renderCategorias(); renderArmario();
+    } catch (e) { m.textContent = "No se pudo guardar: " + e.message; }
+  }
+
   // ================== Copia de seguridad ==================
   function fechaCopia() { var d = new Date(), p = function (n) { return String(n).padStart(2, "0"); }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "_" + p(d.getHours()) + "-" + p(d.getMinutes()); }
   function resumenInv(inv) { return inv.prendas.length + " prendas, " + inv.conjuntos.length + " conjuntos favoritos, " + inv.calendario.length + " días en el calendario"; }
@@ -1841,6 +1906,7 @@
   function esSJ(p) { return p.categoria === "Sudaderas" || p.categoria === "Jerséis"; }
   function prep(p) {
     var q = Object.assign({}, p);   // copia: no se modifica el inventario real
+    q.categoria = catEf(q);
     q._e = estiloDe(q); q._c = calidez(q); q._v = esVaquera(q) ? 1 : 0; q._s = esEstampada(q) ? 1 : 0;
     q._i = q.talla ? idxRopa(q.talla) : -1; q._n = NEUTROS.indexOf(q.color) >= 0 || !q.color;
     q._sc = { 1: sc(q, 1), 2: sc(q, 2), 3: sc(q, 3), 4: sc(q, 4) };
@@ -1886,7 +1952,7 @@
     if (n === 1) return [null];
     var r = [null];
     P.capas.forEach(function (c) {
-      if (a && (a.id === c.id || (esSJ(c) && esSJ(a)))) return;
+      if (a && (a.id === c.id || (esSJ(c) && esSJ(a)) || !capaValidaSobre(a, c))) return;
       r.push(c);
     });
     return r;
@@ -1916,7 +1982,7 @@
     if (CAT_ARRIBA.indexOf(cand.categoria) >= 0) P.abajos.forEach(function (b) { capasPara(cand, P, n).forEach(function (c) { reg(cand, b, c, null); }); });
     if (CAT_ABAJO.indexOf(cand.categoria) >= 0) P.arribas.forEach(function (a) { capasPara(a, P, n).forEach(function (c) { reg(a, cand, c, null); }); });
     if (CAT_CAPA.indexOf(cand.categoria) >= 0 && n > 1) {
-      P.arribas.forEach(function (a) { if (esSJ(cand) && esSJ(a)) return; P.abajos.forEach(function (b) { reg(a, b, cand, null); }); });
+      P.arribas.forEach(function (a) { if ((esSJ(cand) && esSJ(a)) || !capaValidaSobre(a, cand)) return; P.abajos.forEach(function (b) { reg(a, b, cand, null); }); });
       P.unos.forEach(function (u) { reg(null, null, cand, u); });
     }
     return cnt;
@@ -2311,6 +2377,12 @@
       if (f && C.resultados[parseInt(f.getAttribute("data-favc"), 10)]) guardarFavorito(C.resultados[parseInt(f.getAttribute("data-favc"), 10)].ids);
     });
 
+    $("catDet").addEventListener("toggle", function () { if (this.open) { $("msgCat").textContent = ""; renderCategorias(); } });
+    $("catLista").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-cat]"); if (!b) return;
+      var i = parseInt(b.getAttribute("data-i"), 10);
+      if (b.getAttribute("data-cat") === "ren") renombrarCategoria(i); else eliminarCategoria(i);
+    });
     $("btnCopiaDropbox").addEventListener("click", copiaDropbox);
     $("btnCopiaDescargar").addEventListener("click", copiaDescargar);
     $("btnCopiaRestaurar").addEventListener("click", function () { $("fileRestaurar").value = ""; $("fileRestaurar").click(); });
