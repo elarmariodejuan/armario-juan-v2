@@ -243,6 +243,7 @@
         <select id="fColor"></select>
         <select id="fTemp"></select>
         <select id="fFav"><option value="">Todas</option><option value="1">Solo favoritas</option></select>
+        <select id="fOrigen"><option value="">Propias y prestadas</option><option value="pend">Prestadas (por devolver)</option><option value="propias">Solo propias</option></select>
         <button class="btn sec" id="btnLimpiar" style="margin-top:0;padding:12px">Quitar filtros</button>
       </div>
     </details>
@@ -305,6 +306,10 @@
         <div class="campo"><label for="fTemp2">Temporada</label><select id="fTemp2"></select></div>
         <div class="campo"><span class="etq">Nivel de abrigo</span><div class="seg" id="segAbrigo"></div></div>
         <div class="campo"><label for="fTejido">Tejido</label><input type="text" id="fTejido" placeholder="Ej.: algodón, lana, vaquero" maxlength="40"></div>
+        <div class="campo"><label for="fMarca">Marca</label><input type="text" id="fMarca" list="listaMarcas" placeholder="Ej.: H&amp;M, Sfera, Zara" maxlength="40" autocomplete="off"><datalist id="listaMarcas"></datalist><p class="nota" id="notaMarca" style="margin:6px 0 0" hidden></p></div>
+        <div class="campo"><span class="etq">¿Cómo le queda?</span><div class="seg" id="segAjuste"></div><p class="nota" style="margin:6px 0 0">Sirve para saber cómo talla cada marca. Se apunta con la talla de Juan de ahora.</p></div>
+        <div class="campo"><span class="etq">Procedencia</span><div class="seg" id="segOrigen"></div>
+          <input type="text" id="fPrestadaDe" list="listaPersonas" placeholder="¿De quién es? (para devolverla)" maxlength="40" style="margin-top:8px" hidden autocomplete="off"><datalist id="listaPersonas"></datalist></div>
         <div class="campo"><label for="fEstado">Estado</label><select id="fEstado"></select></div>
         <div class="campo"><span class="etq">Favorita</span><div class="seg"><button type="button" id="btnFavForm">♥ Marcar como favorita</button></div></div>
       </div>
@@ -406,7 +411,9 @@
   var ESTILOS = [["deportivo", "Cómodo / deportivo"], ["diario", "Diario"], ["arreglado", "Arreglado"]];
   var NIV_ESTILO = { deportivo: 0, diario: 1, arreglado: 2 };
   var NOMBRE_ESTILO = { 0: "cómodo / deportivo", 1: "de diario", 2: "arreglado" };
-  var ESTADOS = ["disponible", "guardada", "fuera de temporada"];
+  var ESTADOS = ["disponible", "guardada", "fuera de temporada", "devuelta"];
+  var AJUSTES = [["grande", "Le queda grande"], ["bien", "Le queda bien"], ["justa", "Le queda justa"]];
+  var ORIGENES = [["propia", "Suya / comprada"], ["prestada", "Prestada"]];
   var COLORES = [
     ["Blanco", "#ffffff"], ["Crudo", "#f1e9da"], ["Beige", "#d9c7a6"], ["Arena", "#c8b08a"], ["Marrón", "#7a5a3f"],
     ["Negro", "#2b2926"], ["Gris", "#9a9a98"], ["Azul marino", "#26385c"], ["Azul", "#4a72b0"], ["Celeste", "#9cc3e0"],
@@ -415,7 +422,7 @@
     ["Rosa", "#e6a9b3"], ["Morado", "#8a6aa8"], ["Multicolor", "conic-gradient(#c0453b,#e8cf4f,#4f8a55,#4a72b0,#8a6aa8,#c0453b)"]
   ];
 
-  var S = { inv: null, tab: "armario", editId: null, filtros: { texto: "", cat: "", talla: "", color: "", temp: "", fav: "" } };
+  var S = { inv: null, tab: "armario", editId: null, filtros: { texto: "", cat: "", talla: "", color: "", temp: "", fav: "", origen: "" } };
   var F = null; // estado del formulario
 
   var $ = function (id) { return document.getElementById(id); };
@@ -695,7 +702,7 @@
     var colores = COLORES.map(function (c) { return c[0]; });
     llenarSelect($("fColor"), "Todos los colores", colores, f.color);
     llenarSelect($("fTemp"), "Todas las temporadas", TEMPORADAS, f.temp);
-    $("fFav").value = f.fav;
+    $("fFav").value = f.fav; $("fOrigen").value = f.origen || "";
   }
   function filtrar(lista) {
     var f = S.filtros, t = norm(f.texto);
@@ -706,12 +713,14 @@
       if (f.color && p.color !== f.color && (p.colores2 || []).indexOf(f.color) < 0) return false;
       if (f.temp && p.temporada !== f.temp && p.temporada !== "todo el año") return false;
       if (f.fav && !p.favorito) return false;
+      if (f.origen === "pend" && !(p.origen === "prestada" && p.estado !== "devuelta")) return false;
+      if (f.origen === "propias" && p.origen === "prestada") return false;
       return true;
     });
   }
   function filtrosActivos() {
     var f = S.filtros, n = 0;
-    ["cat", "talla", "color", "temp", "fav"].forEach(function (k) { if (f[k]) n++; });
+    ["cat", "talla", "color", "temp", "fav", "origen"].forEach(function (k) { if (f[k]) n++; });
     return n;
   }
   function renderArmario() {
@@ -770,11 +779,15 @@
     fila("Abrigo", esc(p.abrigo));
     fila("Estilo", p.estilo ? esc((ESTILOS.filter(function (x) { return x[0] === p.estilo; })[0] || [0, p.estilo])[1]) : "");
     fila("Tejido", esc(p.tejido));
+    fila("Marca", esc(p.marca));
+    fila("Cómo le queda", p.ajuste ? esc((AJUSTES.filter(function (x) { return x[0] === p.ajuste; })[0] || [0, p.ajuste])[1]) + (p.ajusteTalla ? " <small>(con talla " + esc(p.ajusteTalla) + ")</small>" : "") : "");
+    if (p.origen === "prestada") fila("Procedencia", "Prestada" + (p.prestadaDe ? " por " + esc(p.prestadaDe) : "") + (p.estado === "devuelta" ? ' <span class="chip">devuelta</span>' : ' <span class="chip aviso">por devolver</span>'));
     fila("Estado", esc(p.estado));
     $("hoja").innerHTML = '<div class="grande"><img id="imgGrande" alt=""></div>'
       + "<h3>" + esc(p.nombre) + "</h3>"
       + '<dl class="ficha">' + filas.join("") + "</dl>"
       + '<button class="btn sec" data-acc="fav" data-id="' + esc(p.id) + '">' + (p.favorito ? "♥ Quitar de favoritas" : "♡ Marcar como favorita") + "</button>"
+      + (p.origen === "prestada" && p.estado !== "devuelta" ? '<button class="btn sec" data-acc="devuelta" data-id="' + esc(p.id) + '">Marcar como devuelta</button>' : "")
       + '<button class="btn" data-acc="editar" data-id="' + esc(p.id) + '">Editar</button>'
       + '<button class="btn peligro" data-acc="eliminar" data-id="' + esc(p.id) + '">Eliminar</button>'
       + '<button class="btn sec" data-acc="cerrar">Cerrar</button>';
@@ -786,6 +799,14 @@
     }).catch(function () { toast("No se pudo cargar la foto grande"); });
   }
 
+  async function marcarDevuelta(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; }); if (!p) return;
+    if (!confirm("¿Marcar «" + p.nombre + "» como devuelta? Dejará de aparecer en los conjuntos. La foto y los datos se conservan.")) return;
+    try {
+      await modificarInv(function (inv) { var q = inv.prendas.find(function (x) { return x.id === id; }); if (q) { q.estado = "devuelta"; q.devueltaEl = new Date().toISOString(); } });
+      cerrarDetalle(); renderArmario(); toast("Marcada como devuelta");
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
   async function eliminarPrenda(id) {
     var p = S.inv.prendas.find(function (x) { return x.id === id; });
     if (!p) return;
@@ -846,7 +867,9 @@
       colores2: p ? (p.colores2 || []).slice() : [],
       abrigo: p ? (p.abrigo || "") : "",
       estilo: p ? (p.estilo || "") : "",
-      favorito: p ? !!p.favorito : false
+      favorito: p ? !!p.favorito : false,
+      ajuste: p ? (p.ajuste || "") : "",
+      origen: p ? (p.origen || "propia") : "propia"
     };
     $("tituloForm").textContent = p ? "Editar prenda" : "Añadir prenda";
     $("btnGuardar").textContent = p ? "Guardar cambios" : "Guardar prenda";
@@ -879,8 +902,25 @@
     $("nomColorP").textContent = F.color;
     pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
     pintarPares($("segEstilo"), ESTILOS, F.estilo);
+    $("fMarca").value = p ? (p.marca || "") : "";
+    $("listaMarcas").innerHTML = marcasUsadas().map(function (m) { return '<option value="' + esc(m) + '">'; }).join("");
+    $("listaPersonas").innerHTML = personasUsadas().map(function (m) { return '<option value="' + esc(m) + '">'; }).join("");
+    $("fPrestadaDe").value = p ? (p.prestadaDe || "") : "";
+    pintarAjusteOrigen(); mostrarNotaMarca();
     pintarFavForm();
     $("masDetalles").open = !!p;
+  }
+  function pintarAjusteOrigen() {
+    pintarPares($("segAjuste"), AJUSTES, F.ajuste);
+    pintarPares($("segOrigen"), ORIGENES, F.origen);
+    $("fPrestadaDe").hidden = F.origen !== "prestada";
+  }
+  function marcasUsadas() { return valoresUsados("marca"); }
+  function personasUsadas() { return valoresUsados("prestadaDe"); }
+  function valoresUsados(campo) {
+    var cuenta = {};
+    ((S.inv && S.inv.prendas) || []).forEach(function (p) { var v = (p[campo] || "").trim(); if (v) cuenta[v] = (cuenta[v] || 0) + 1; });
+    return Object.keys(cuenta).sort(function (a, b) { return cuenta[b] - cuenta[a]; });
   }
   function pintarFavForm() {
     var b = $("btnFavForm");
@@ -888,6 +928,12 @@
     b.textContent = F.favorito ? "♥ Favorita" : "♡ Marcar como favorita";
   }
 
+  // Si ya hay una marca escrita de otra forma ("zara" / "Zara"), se usa la que ya existía
+  function unificarMarca(m) {
+    if (!m) return "";
+    var ya = marcasUsadas().filter(function (x) { return norm(x) === norm(m); })[0];
+    return ya || m;
+  }
   async function guardarPrenda() {
     var err = $("errForm"); err.textContent = "";
     var nombre = $("fNombre").value.trim();
@@ -920,8 +966,12 @@
         nombre: nombre, categoria: cat, tipo: $("fTipo").value.trim(), talla: talla,
         color: F.color, colores2: F.colores2.filter(function (x) { return x !== F.color; }),
         temporada: $("fTemp2").value, abrigo: F.abrigo, estilo: F.estilo, tejido: $("fTejido").value.trim(),
-        estado: $("fEstado").value || "disponible", favorito: F.favorito
+        estado: $("fEstado").value || "disponible", favorito: F.favorito,
+        marca: unificarMarca($("fMarca").value.trim()), ajuste: F.ajuste, origen: F.origen,
+        prestadaDe: F.origen === "prestada" ? $("fPrestadaDe").value.trim() : ""
       };
+      // El ajuste se apunta con la talla de Juan de ese momento; solo se actualiza si lo cambias
+      if (F.ajuste !== (editando ? (editando.ajuste || "") : "")) datos.ajusteTalla = F.ajuste ? ((S.inv.ajustes && S.inv.ajustes.tallaRopa) || "") : "";
       await modificarInv(function (inv) {
         var existe = CATS_BASE.concat(inv.categoriasExtra).some(function (x) { return norm(x) === norm(cat); });
         if (!existe) inv.categoriasExtra.push(cat);
@@ -1819,6 +1869,77 @@
     } catch (e) { m.textContent = "No se pudo guardar: " + e.message; }
   }
 
+
+  // ================== Marcas, tallaje y prendas prestadas ==================
+  var AJ_VAL = { grande: 1, bien: 0, justa: -1 };
+  // Para cada marca: cuánto se desvía su talla. Una prenda que "le queda bien" con una etiqueta más grande que la talla
+  // de Juan indica que la marca talla pequeño; si con su talla le queda grande, talla grande.
+  function tendenciaMarcas() {
+    var g = {};
+    ((S.inv && S.inv.prendas) || []).forEach(function (p) {
+      var m = (p.marca || "").trim(); if (!m || !p.ajuste || AJ_VAL[p.ajuste] === undefined) return;
+      var a = idxRopa(p.talla || ""), b = idxRopa(p.ajusteTalla || ""); if (a < 0 || b < 0) return;
+      var k = norm(m), t = AJ_VAL[p.ajuste] - (a - b);
+      if (!g[k]) g[k] = { nombre: m, suma: 0, n: 0 };
+      g[k].suma += t; g[k].n++;
+    });
+    Object.keys(g).forEach(function (k) {
+      var m = g[k].suma / g[k].n; g[k].media = m;
+      g[k].txt = m >= 0.5 ? "suele tallar grande" : m <= -0.5 ? "suele tallar pequeño" : "talla normal";
+    });
+    return g;
+  }
+  function mostrarNotaMarca() {
+    var el = $("notaMarca"), m = norm($("fMarca").value.trim()), t = m ? tendenciaMarcas()[m] : null;
+    if (!t) { el.hidden = true; return; }
+    el.hidden = false;
+    el.textContent = "Según tus datos, " + t.nombre + " " + t.txt + " (" + t.n + (t.n === 1 ? " prenda" : " prendas") + ")" + (t.n < 3 ? ": aún son pocos datos." : ".");
+  }
+  function htmlMarcasYPrestadas() {
+    var prendas = (S.inv.prendas || []).filter(function (p) { return p.estado !== "devuelta"; }), h = "";
+    // Marcas
+    var cuenta = {}, sinMarca = 0;
+    prendas.forEach(function (p) {
+      var m = (p.marca || "").trim(); if (!m) { sinMarca++; return; }
+      var k = norm(m); if (!cuenta[k]) cuenta[k] = { nombre: m, n: 0 }; cuenta[k].n++;
+    });
+    var ks = Object.keys(cuenta).sort(function (a, b) { return cuenta[b].n - cuenta[a].n; });
+    h += '<div class="card"><h2>Marcas</h2>';
+    if (!ks.length) h += '<p class="nota" style="margin:0">Aún no has indicado ninguna marca. Puedes añadirla en Editar › Más detalles.</p>';
+    else {
+      h += ks.slice(0, 10).map(function (k) { return '<div class="barra"><span>' + esc(cuenta[k].nombre) + "</span><b>" + cuenta[k].n + "</b></div>"; }).join("");
+      if (ks.length > 10) h += '<p class="nota">Y ' + (ks.length - 10) + " marcas más.</p>";
+      if (sinMarca) h += '<p class="nota" style="margin:8px 0 0">' + sinMarca + (sinMarca === 1 ? " prenda sin marca." : " prendas sin marca.") + "</p>";
+      var tz = tendenciaMarcas(), tk = Object.keys(tz).sort(function (a, b) { return tz[b].n - tz[a].n; });
+      h += '<p class="grupo-tit" style="margin-top:12px">Cómo talla cada marca</p>';
+      if (tk.length) {
+        h += tk.map(function (k) { var t = tz[k]; return '<div class="barra"><span>' + esc(t.nombre) + '</span><b class="' + (t.media >= 0.5 || t.media <= -0.5 ? "poco" : "") + '">' + t.txt + " · " + t.n + (t.n < 3 ? " (pocos datos)" : "") + "</b></div>"; }).join("");
+        h += '<p class="nota" style="margin:8px 0 0">Se calcula con las prendas donde has marcado «¿Cómo le queda?». Cuantas más, más fiable.</p>';
+      } else {
+        var conAj = prendas.filter(function (p) { return p.marca && p.ajuste; }).length;
+        h += '<p class="nota" style="margin:0">' + (conAj
+          ? "Para calcularlo hace falta indicar la talla de Juan en Conjuntos › Ajustes de Juan antes de marcar cómo le queda la prenda."
+          : "Marca «¿Cómo le queda?» en algunas prendas con marca (Editar › Más detalles) y aquí verás qué marcas tallan grande o pequeño.") + "</p>";
+      }
+    }
+    h += "</div>";
+    // Prestadas
+    var pend = (S.inv.prendas || []).filter(function (p) { return p.origen === "prestada" && p.estado !== "devuelta"; });
+    var dev = (S.inv.prendas || []).filter(function (p) { return p.origen === "prestada" && p.estado === "devuelta"; }).length;
+    if (pend.length || dev) {
+      var porPersona = {};
+      pend.forEach(function (p) { var k = (p.prestadaDe || "").trim() || "Sin indicar de quién"; (porPersona[k] = porPersona[k] || []).push(p.nombre); });
+      h += '<div class="card"><h2>Prendas prestadas</h2>';
+      if (pend.length) {
+        h += '<p class="nota" style="margin:0 0 6px">' + pend.length + (pend.length === 1 ? " prenda por devolver" : " prendas por devolver") + (dev ? " · " + dev + " ya devueltas" : "") + ".</p>";
+        h += Object.keys(porPersona).sort().map(function (k) { return '<div class="barra" style="display:block"><b>' + esc(k) + " (" + porPersona[k].length + ")</b><br><span style=\"color:var(--suave);font-size:13.5px\">" + porPersona[k].map(esc).join(", ") + "</span></div>"; }).join("");
+        h += '<p class="nota" style="margin:8px 0 0">Para verlas con foto: Armario › Filtros › «Prestadas (por devolver)».</p>';
+      } else h += '<p class="nota" style="margin:0">No tienes nada pendiente de devolver (' + dev + " ya devueltas).</p>";
+      h += "</div>";
+    }
+    return h;
+  }
+
   // ================== Copia de seguridad ==================
   function fechaCopia() { var d = new Date(), p = function (n) { return String(n).padStart(2, "0"); }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "_" + p(d.getHours()) + "-" + p(d.getMinutes()); }
   function resumenInv(inv) { return inv.prendas.length + " prendas, " + inv.conjuntos.length + " conjuntos favoritos, " + inv.calendario.length + " días en el calendario"; }
@@ -2190,6 +2311,7 @@
     });
     h += '<p class="nota" style="margin:8px 0 0">Cuento combinaciones de arriba, abajo y capa que quedan bien juntas (sin calzado ni complementos).'
       + (ana.sinColor ? " " + ana.sinColor + " prendas no tienen color indicado: las he contado como si combinaran." : "") + "</p></div>";
+    h += htmlMarcasYPrestadas();
     // Colores
     var cols = Object.keys(ana.colorPresente).sort(function (a, b) { return ana.colorPresente[b] - ana.colorPresente[a]; });
     h += '<div class="card"><h2>Colores</h2>';
@@ -2411,11 +2533,11 @@
     });
 
     $("busca").addEventListener("input", function (e) { S.filtros.texto = e.target.value; renderArmario(); });
-    [["fCat", "cat"], ["fTalla", "talla"], ["fColor", "color"], ["fTemp", "temp"], ["fFav", "fav"]].forEach(function (par) {
+    [["fCat", "cat"], ["fTalla", "talla"], ["fColor", "color"], ["fTemp", "temp"], ["fFav", "fav"], ["fOrigen", "origen"]].forEach(function (par) {
       $(par[0]).addEventListener("change", function (e) { S.filtros[par[1]] = e.target.value; renderArmario(); });
     });
     $("btnLimpiar").addEventListener("click", function () {
-      S.filtros = { texto: "", cat: "", talla: "", color: "", temp: "", fav: "" };
+      S.filtros = { texto: "", cat: "", talla: "", color: "", temp: "", fav: "", origen: "" };
       $("busca").value = ""; prepararFiltros(); renderArmario();
     });
 
@@ -2433,6 +2555,7 @@
       if (acc === "cerrar") cerrarDetalle();
       if (acc === "fav") { alternarFav(id).then(function () { if (!$("fondo").hidden) abrirDetalle(id); }); }
       if (acc === "eliminar") eliminarPrenda(id);
+      if (acc === "devuelta") marcarDevuelta(id);
       if (acc === "editar") {
         var p = S.inv.prendas.find(function (x) { return x.id === id; });
         cerrarDetalle(); prepararFormulario(p); irA("anadir");
@@ -2481,6 +2604,16 @@
       F.estilo = F.estilo === v ? "" : v;
       pintarPares($("segEstilo"), ESTILOS, F.estilo);
     });
+    $("segAjuste").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var v = b.getAttribute("data-v"); F.ajuste = F.ajuste === v ? "" : v; pintarAjusteOrigen();
+    });
+    $("segOrigen").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      F.origen = b.getAttribute("data-v"); pintarAjusteOrigen();
+      if (F.origen === "prestada") $("fPrestadaDe").focus();
+    });
+    $("fMarca").addEventListener("input", mostrarNotaMarca);
     $("btnFavForm").addEventListener("click", function () { F.favorito = !F.favorito; pintarFavForm(); });
     $("btnGuardar").addEventListener("click", guardarPrenda);
     $("btnCancelar").addEventListener("click", function () { S.editId = null; irA("armario"); });
