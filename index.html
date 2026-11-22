@@ -251,11 +251,7 @@
     <div class="grid" id="grid"></div>
     <div class="vacio" id="vacio" hidden>Todavía no hay prendas.<br>Pulsa <b>Añadir</b> abajo para hacer la primera foto.</div>
     <div class="vacio" id="sinResultados" hidden>Ninguna prenda coincide con la búsqueda o los filtros.</div>
-    <details class="mas" id="catDet" style="margin-top:18px"><summary>Mis categorías</summary><div class="dentro">
-      <p class="nota">Las categorías básicas están fijas porque el estilista las usa para saber qué es cada prenda. Aquí puedes cambiar el nombre o borrar las que hayas creado tú.</p>
-      <div id="catLista"></div><p class="nota" id="msgCat"></p>
-    </div></details>
-    <details class="mas" id="copiaDet" style="margin-top:18px"><summary>Copia de seguridad</summary><div class="dentro">
+        <details class="mas" id="copiaDet" style="margin-top:18px"><summary>Copia de seguridad</summary><div class="dentro">
       <p class="nota">La copia guarda tus prendas, conjuntos, calendario y sugerencias. Las fotos ya están a salvo en tu Dropbox, no hace falta copiarlas.</p>
       <button class="btn" id="btnCopiaDropbox">Guardar copia en Dropbox</button>
       <button class="btn sec" id="btnCopiaDescargar">Descargar copia al móvil</button>
@@ -288,7 +284,6 @@
     <div class="campo">
       <label for="fCategoria">Categoría <span class="req">*</span></label>
       <select id="fCategoria"></select>
-      <input type="text" id="fCatNueva" placeholder="Nombre de la nueva categoría" style="margin-top:8px" hidden maxlength="40">
     </div>
 
     <details class="mas" id="masDetalles">
@@ -336,6 +331,7 @@
       <div class="dentro">
         <p class="nota">Si indicas su talla, no te propondré prendas que le queden muy pequeñas o grandes.</p>
         <div class="campo"><label for="selUsaCalzado">¿Usa calzado?</label><select id="selUsaCalzado"><option value="no">No, todavía no anda</option><option value="si">Sí, usa calzado</option></select></div>
+        <div class="campo"><label for="fNacimiento">Fecha de nacimiento de Juan</label><input type="date" id="fNacimiento"><p class="nota" id="notaEdad" style="margin:6px 0 0"></p></div>
         <div class="campo"><label for="selTallaRopa">Talla de ropa</label><select id="selTallaRopa"></select></div>
         <div class="campo"><label for="selTallaCalzado">Número de calzado</label><select id="selTallaCalzado"></select></div>
       </div>
@@ -406,6 +402,10 @@
     "2 años", "3 años", "4 años", "5 años", "6 años", "7 años", "8 años", "9 años", "10 años", "11 años", "12 años",
     "Calzado 18", "Calzado 19", "Calzado 20", "Calzado 21", "Calzado 22", "Calzado 23", "Calzado 24", "Calzado 25",
     "Calzado 26", "Calzado 27", "Calzado 28", "Calzado 29", "Calzado 30", "Calzado 31", "Calzado 32", "Calzado 33", "Calzado 34", "Talla única"];
+  // Etiquetas con un solo mes (las venden así algunas tiendas). Cuentan como la talla en la que ese mes es el límite superior:
+  // 12 meses ≈ 9-12, 18 meses ≈ 12-18, 24 meses ≈ 18-24 (coincide con las tablas habituales: 80 cm, 86 cm, 92 cm).
+  var EQUIV = { "3 meses": "0-3 meses", "6 meses": "3-6 meses", "9 meses": "6-9 meses", "12 meses": "9-12 meses", "18 meses": "12-18 meses", "24 meses": "18-24 meses" };
+  var TALLAS_SUELTAS = ["3 meses", "6 meses", "9 meses", "12 meses", "18 meses", "24 meses"];
   var TEMPORADAS = ["primavera", "verano", "otoño", "invierno", "todo el año"];
   var ABRIGOS = ["ligero", "medio", "calentito"];
   var ESTILOS = [["deportivo", "Cómodo / deportivo"], ["diario", "Diario"], ["arreglado", "Arreglado"]];
@@ -568,12 +568,13 @@
 
   // ================== Inventario ==================
   function inventarioNuevo() {
-    return { version: 1, creado: new Date().toISOString(), ajustes: { tallaRopa: "", tallaCalzado: "", usaCalzado: false }, categoriasExtra: [], prendas: [], conjuntos: [], calendario: [], sugerencias: [] };
+    return { version: 1, creado: new Date().toISOString(), ajustes: { tallaRopa: "", tallaCalzado: "", usaCalzado: false, nacimiento: "" }, categoriasExtra: [], prendas: [], conjuntos: [], calendario: [], sugerencias: [] };
   }
   function normalizarInv(inv) {
     ["prendas", "conjuntos", "calendario", "sugerencias", "categoriasExtra"].forEach(function (k) { if (!Array.isArray(inv[k])) inv[k] = []; });
     if (!inv.ajustes || typeof inv.ajustes !== "object") inv.ajustes = {};
     if (typeof inv.ajustes.tallaRopa !== "string") inv.ajustes.tallaRopa = "";
+    if (typeof inv.ajustes.nacimiento !== "string") inv.ajustes.nacimiento = "";
     if (typeof inv.ajustes.tallaCalzado !== "string") inv.ajustes.tallaCalzado = "";
     if (typeof inv.ajustes.usaCalzado !== "boolean") inv.ajustes.usaCalzado = false;
     return inv;
@@ -854,7 +855,6 @@
   function llenarCategoriasForm(sel) {
     var h = '<option value="">Elige una categoría…</option>';
     todasCategorias().forEach(function (c) { h += '<option value="' + esc(c) + '"' + (c === sel ? " selected" : "") + ">" + esc(c) + "</option>"; });
-    h += '<option value="__nueva">➕ Nueva categoría…</option>';
     $("fCategoria").innerHTML = h;
   }
 
@@ -880,16 +880,18 @@
     $("foto-vacia").hidden = false; $("cambiarFoto").hidden = true;
     $("fNombre").value = p ? p.nombre : "";
     llenarCategoriasForm(p ? p.categoria : ultimaCategoria);
-    $("fCatNueva").hidden = true; $("fCatNueva").value = "";
     $("fTipo").value = p ? (p.tipo || "") : "";
     $("fTejido").value = p ? (p.tejido || "") : "";
     var th = '<option value="">Sin indicar</option>';
-    TALLAS.forEach(function (t) { th += '<option value="' + esc(t) + '">' + esc(t) + "</option>"; });
+    TALLAS.forEach(function (t) {
+      if (t === "2 años") th += '<optgroup label="Si la etiqueta trae un solo mes">' + TALLAS_SUELTAS.map(function (x) { return '<option value="' + x + '">' + x + "</option>"; }).join("") + "</optgroup>";
+      th += '<option value="' + esc(t) + '">' + esc(t) + "</option>";
+    });
     th += '<option value="__otra">Otra…</option>';
     $("fTalla2").innerHTML = th;
     $("fTallaOtra").hidden = true; $("fTallaOtra").value = "";
     if (p && p.talla) {
-      if (TALLAS.indexOf(p.talla) >= 0) $("fTalla2").value = p.talla;
+      if (TALLAS.indexOf(p.talla) >= 0 || EQUIV[p.talla]) $("fTalla2").value = p.talla;
       else { $("fTalla2").value = "__otra"; $("fTallaOtra").hidden = false; $("fTallaOtra").value = p.talla; }
     }
     var tp = '<option value="">Sin indicar</option>';
@@ -938,11 +940,11 @@
     var err = $("errForm"); err.textContent = "";
     var nombre = $("fNombre").value.trim();
     var catSel = $("fCategoria").value;
-    var cat = catSel === "__nueva" ? $("fCatNueva").value.trim() : catSel;
+    var cat = catSel;
     var editando = S.editId ? S.inv.prendas.find(function (x) { return x.id === S.editId; }) : null;
     if (!F.foto && !editando) { err.textContent = "Falta la foto."; return; }
     if (!nombre) { err.textContent = "Falta el nombre."; $("fNombre").focus(); return; }
-    if (!cat) { err.textContent = catSel === "__nueva" ? "Escribe el nombre de la nueva categoría." : "Elige una categoría."; return; }
+    if (!cat) { err.textContent = "Elige una categoría."; return; }
 
     var talla = $("fTalla2").value === "__otra" ? $("fTallaOtra").value.trim() : $("fTalla2").value;
     var btn = $("btnGuardar"), textoBtn = btn.textContent;
@@ -971,7 +973,7 @@
         prestadaDe: F.origen === "prestada" ? $("fPrestadaDe").value.trim() : ""
       };
       // El ajuste se apunta con la talla de Juan de ese momento; solo se actualiza si lo cambias
-      if (F.ajuste !== (editando ? (editando.ajuste || "") : "")) datos.ajusteTalla = F.ajuste ? ((S.inv.ajustes && S.inv.ajustes.tallaRopa) || "") : "";
+      if (F.ajuste !== (editando ? (editando.ajuste || "") : "")) datos.ajusteTalla = F.ajuste ? tallaRopaEf(S.inv.ajustes) : "";
       await modificarInv(function (inv) {
         var existe = CATS_BASE.concat(inv.categoriasExtra).some(function (x) { return norm(x) === norm(cat); });
         if (!existe) inv.categoriasExtra.push(cat);
@@ -1111,8 +1113,33 @@
     return ((AMIGOS[a] || []).indexOf(b) >= 0 || (AMIGOS[b] || []).indexOf(a) >= 0) ? 0.9 : 0.3;
   }
 
+  // Edad de Juan y talla que le corresponde por edad
+  function mesesDe(nac) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(nac || ""); if (!m) return null;
+    var hoy = new Date(), meses = (hoy.getFullYear() - +m[1]) * 12 + (hoy.getMonth() + 1 - +m[2]);
+    if (hoy.getDate() < +m[3]) meses--;
+    return meses >= 0 && meses < 12 * 13 ? meses : null;
+  }
+  function textoEdad(meses) {
+    if (meses < 24) return meses + (meses === 1 ? " mes" : " meses");
+    var a = Math.floor(meses / 12), r = meses % 12;
+    return a + (a === 1 ? " año" : " años") + (r ? " y " + r + (r === 1 ? " mes" : " meses") : "");
+  }
+  function tallaPorMeses(m) {
+    var r = [[3, "0-3 meses"], [6, "3-6 meses"], [9, "6-9 meses"], [12, "9-12 meses"], [18, "12-18 meses"], [24, "18-24 meses"]];
+    for (var i = 0; i < r.length; i++) if (m < r[i][0]) return r[i][1];
+    return Math.min(12, Math.max(2, Math.floor(m / 12))) + " años";
+  }
+  // Talla de ropa de Juan: la que hayas elegido a mano o, si no, la que le toca por su edad
+  function tallaRopaEf(aj) {
+    if (!aj) return "";
+    if (aj.tallaRopa) return aj.tallaRopa;
+    var m = mesesDe(aj.nacimiento);
+    return m === null ? "" : tallaPorMeses(m);
+  }
   function num(t) { var m = String(t || "").match(/\d+/); return m ? parseInt(m[0], 10) : NaN; }
   function idxRopa(t) {
+    t = EQUIV[t] || t;
     var i = TALLAS.indexOf(t);
     return (i < 0 || /^Calzado/.test(t) || t === "Talla única") ? -1 : i;
   }
@@ -1123,7 +1150,7 @@
       if (isNaN(ref) || isNaN(n)) return true;
       return n === ref || n === ref + 1;
     }
-    var r = idxRopa(aj.tallaRopa || ""), i = idxRopa(p.talla);
+    var r = idxRopa(tallaRopaEf(aj)), i = idxRopa(p.talla);
     if (r < 0 || i < 0) return true;
     return Math.abs(i - r) <= 1;
   }
@@ -1834,42 +1861,6 @@
 
 
 
-  // ================== Gestionar categorías propias ==================
-  function renderCategorias() {
-    var extra = (S.inv && S.inv.categoriasExtra) || [], el = $("catLista");
-    if (!extra.length) { el.innerHTML = '<p class="nota">Todavía no has creado ninguna categoría propia.</p>'; return; }
-    el.innerHTML = extra.map(function (c, i) {
-      var n = S.inv.prendas.filter(function (p) { return p.categoria === c; }).length;
-      return '<div class="barra" style="align-items:center;gap:8px"><span>' + esc(c) + ' <small style="color:var(--suave)">(' + n + ')</small></span><span>'
-        + '<button class="linkbtn" data-cat="ren" data-i="' + i + '">Renombrar</button> · <button class="linkbtn" data-cat="del" data-i="' + i + '">Eliminar</button></span></div>';
-    }).join("");
-  }
-  async function renombrarCategoria(i) {
-    var viejo = S.inv.categoriasExtra[i], m = $("msgCat");
-    var nuevo = (prompt("Nuevo nombre para «" + viejo + "»:", viejo) || "").trim();
-    if (!nuevo || nuevo === viejo) return;
-    var ya = CATS_BASE.concat(S.inv.categoriasExtra).some(function (x) { return norm(x) === norm(nuevo) && norm(x) !== norm(viejo); });
-    if (ya) { m.textContent = "Ya existe una categoría con ese nombre."; return; }
-    try {
-      await modificarInv(function (inv) {
-        var k = inv.categoriasExtra.indexOf(viejo); if (k >= 0) inv.categoriasExtra[k] = nuevo;
-        inv.prendas.forEach(function (p) { if (p.categoria === viejo) p.categoria = nuevo; });
-      });
-      m.textContent = "Renombrada a «" + nuevo + "»."; renderCategorias(); renderArmario();
-    } catch (e) { m.textContent = "No se pudo guardar: " + e.message; }
-  }
-  async function eliminarCategoria(i) {
-    var c = S.inv.categoriasExtra[i], m = $("msgCat");
-    var n = S.inv.prendas.filter(function (p) { return p.categoria === c; }).length;
-    if (n > 0) { m.textContent = "No se puede eliminar «" + c + "»: tiene " + n + (n === 1 ? " prenda" : " prendas") + ". Cámbialas primero a otra categoría (Editar prenda)."; return; }
-    if (!confirm("¿Eliminar la categoría «" + c + "»? No tiene prendas.")) return;
-    try {
-      await modificarInv(function (inv) { inv.categoriasExtra = inv.categoriasExtra.filter(function (x) { return x !== c; }); });
-      m.textContent = "Categoría eliminada."; renderCategorias(); renderArmario();
-    } catch (e) { m.textContent = "No se pudo guardar: " + e.message; }
-  }
-
-
   // ================== Marcas, tallaje y prendas prestadas ==================
   var AJ_VAL = { grande: 1, bien: 0, justa: -1 };
   // Para cada marca: cuánto se desvía su talla. Una prenda que "le queda bien" con una etiqueta más grande que la talla
@@ -1918,7 +1909,7 @@
       } else {
         var conAj = prendas.filter(function (p) { return p.marca && p.ajuste; }).length;
         h += '<p class="nota" style="margin:0">' + (conAj
-          ? "Para calcularlo hace falta indicar la talla de Juan en Conjuntos › Ajustes de Juan antes de marcar cómo le queda la prenda."
+          ? "Para calcularlo hace falta indicar su fecha de nacimiento o su talla en Conjuntos › Ajustes de Juan antes de marcar cómo le queda la prenda."
           : "Marca «¿Cómo le queda?» en algunas prendas con marca (Editar › Más detalles) y aquí verás qué marcas tallan grande o pequeño.") + "</p>";
       }
     }
@@ -2142,7 +2133,7 @@
   function solapanTemp(a, b) { return !a || !b || a === "todo el año" || b === "todo el año" || a === b; }
 
   function tallaSupuesta(ropa, aj) {
-    if (aj.tallaRopa) return aj.tallaRopa;
+    if (tallaRopaEf(aj)) return tallaRopaEf(aj);
     var c = {}, best = "", n = 0;
     ropa.forEach(function (p) { if (p.talla && idxRopa(p.talla) >= 0) { c[p.talla] = (c[p.talla] || 0) + 1; if (c[p.talla] > n) { n = c[p.talla]; best = p.talla; } } });
     return best;
@@ -2395,15 +2386,25 @@
     pintarControlesConjuntos();
     pintarTiempo();
     cargarTiempo(false);
+    pintarAjustesJuan();
+  }
+  function pintarAjustesJuan() {
     var aj = S.inv.ajustes || {};
-    llenarSelect($("selTallaRopa"), "Sin indicar", TALLAS.filter(function (t) { return !/^Calzado/.test(t) && t !== "Talla única"; }), aj.tallaRopa);
+    $("fNacimiento").value = aj.nacimiento || "";
+    llenarSelect($("selTallaRopa"), mesesDe(aj.nacimiento) !== null ? "Automática (según su edad)" : "Sin indicar", TALLAS.filter(function (t) { return !/^Calzado/.test(t) && t !== "Talla única"; }), aj.tallaRopa);
     llenarSelect($("selTallaCalzado"), "Sin indicar", TALLAS.filter(function (t) { return /^Calzado/.test(t); }), aj.tallaCalzado);
     $("selUsaCalzado").value = aj.usaCalzado ? "si" : "no";
+    pintarNotaEdad(aj);
+  }
+  function pintarNotaEdad(aj) {
+    var m = mesesDe(aj.nacimiento), el = $("notaEdad");
+    el.textContent = m === null ? "Con su fecha de nacimiento calculo su talla por edad. Si quieres otra, elígela abajo y mandará esa." : "Juan tiene " + textoEdad(m) + ". Talla por edad: " + tallaPorMeses(m) + (aj.tallaRopa ? " (ahora usas la que has elegido: " + aj.tallaRopa + ")." : ".");
   }
   async function guardarAjuste(clave, valor) {
     try {
-      await modificarInv(function (inv) { inv.ajustes = Object.assign({ tallaRopa: "", tallaCalzado: "", usaCalzado: false }, inv.ajustes); inv.ajustes[clave] = valor; });
+      await modificarInv(function (inv) { inv.ajustes = Object.assign({ tallaRopa: "", tallaCalzado: "", usaCalzado: false, nacimiento: "" }, inv.ajustes); inv.ajustes[clave] = valor; });
       toast("Guardado ✓");
+      pintarAjustesJuan();
     } catch (e) { toast("No se pudo guardar el ajuste"); }
   }
 
@@ -2496,6 +2497,7 @@
       C.nivel = b.getAttribute("data-v"); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarControlesConjuntos(); pintarTiempo();
     });
     $("selTallaRopa").addEventListener("change", function (e) { guardarAjuste("tallaRopa", e.target.value); });
+    $("fNacimiento").addEventListener("change", function (e) { guardarAjuste("nacimiento", e.target.value); });
     $("selTallaCalzado").addEventListener("change", function (e) { guardarAjuste("tallaCalzado", e.target.value); });
     $("selUsaCalzado").addEventListener("change", function (e) { guardarAjuste("usaCalzado", e.target.value === "si"); });
     $("btnCrear").addEventListener("click", crearConjuntos);
@@ -2505,12 +2507,6 @@
       if (f && C.resultados[parseInt(f.getAttribute("data-favc"), 10)]) guardarFavorito(C.resultados[parseInt(f.getAttribute("data-favc"), 10)].ids);
     });
 
-    $("catDet").addEventListener("toggle", function () { if (this.open) { $("msgCat").textContent = ""; renderCategorias(); } });
-    $("catLista").addEventListener("click", function (e) {
-      var b = e.target.closest("[data-cat]"); if (!b) return;
-      var i = parseInt(b.getAttribute("data-i"), 10);
-      if (b.getAttribute("data-cat") === "ren") renombrarCategoria(i); else eliminarCategoria(i);
-    });
     $("btnCopiaDropbox").addEventListener("click", copiaDropbox);
     $("btnCopiaDescargar").addEventListener("click", copiaDescargar);
     $("btnCopiaRestaurar").addEventListener("click", function () { $("fileRestaurar").value = ""; $("fileRestaurar").click(); });
@@ -2571,10 +2567,6 @@
       var im = $("fotoPrev"); im.src = URL.createObjectURL(file); im.hidden = false;
       $("foto-vacia").hidden = true; $("cambiarFoto").hidden = false;
       $("errForm").textContent = "";
-    });
-    $("fCategoria").addEventListener("change", function (e) {
-      var nueva = e.target.value === "__nueva";
-      $("fCatNueva").hidden = !nueva; if (nueva) $("fCatNueva").focus();
     });
     $("fTalla2").addEventListener("change", function (e) {
       var otra = e.target.value === "__otra";
