@@ -946,7 +946,8 @@
   }
 
   // ================== Estilista (Fase 3) ==================
-  var CAT_ARRIBA = ["Camisetas y partes de arriba", "Bodies", "Camisas", "Jerséis", "Sudaderas"];
+  // La "base" de arriba es siempre camiseta, body o camisa. Sudaderas y jerséis van ENCIMA (como capa), nunca solos.
+  var CAT_ARRIBA = ["Camisetas y partes de arriba", "Bodies", "Camisas"];
   var CAT_ABAJO = ["Pantalones y partes de abajo", "Petos"];
   var CAT_UNO = ["Conjuntos", "Monos", "Vestidos"];
   var CAT_CAPA = ["Abrigos y chaquetas", "Chalecos", "Rebecas", "Sudaderas", "Jerséis"];
@@ -1124,10 +1125,11 @@
     var A = it.arriba || it.uno, B = it.abajo, pares = [];
     if (it.arriba && it.abajo) pares.push([it.arriba, it.abajo, 3]);
     if (it.capa) { pares.push([it.capa, A, 1.5]); if (B) pares.push([it.capa, B, 1]); }
+    if (it.capa2) { pares.push([it.capa2, it.capa || A, 1.5]); if (B) pares.push([it.capa2, B, 1]); }
     if (it.calzado) { pares.push([it.calzado, B || A, 1]); if (B) pares.push([it.calzado, A, 0.5]); }
     return pares;
   }
-  function piezasDe(it) { return [it.arriba, it.abajo, it.uno, it.capa, it.calzado, it.calcetin, it.gorro, it.acc].filter(Boolean); }
+  function piezasDe(it) { return [it.arriba, it.abajo, it.uno, it.capa, it.capa2, it.calzado, it.calcetin, it.gorro, it.acc].filter(Boolean); }
   function esComplemento(p) { return CAT_COMPLEMENTO.indexOf(p.categoria) >= 0; }
   // Elige el complemento (calcetines, gorro, accesorio) cuyo color mejor combina con las prendas de referencia
   function mejorComplemento(lista, refs, h, minimo) {
@@ -1145,11 +1147,11 @@
     var piezas = piezasDe(it);
     if (!compatTallas(piezas.filter(function (p) { return p.categoria !== "Calzado" && p.categoria !== "Accesorios"; }))) return null;
     // Estilo: nunca se mezcla algo arreglado con algo deportivo
-    var ropaEst = [it.arriba, it.abajo, it.uno, it.capa].filter(Boolean).map(estiloDe);
+    var ropaEst = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(Boolean).map(estiloDe);
     var maxEst = Math.max.apply(null, ropaEst);
     if (maxEst - Math.min.apply(null, ropaEst) >= 2) { ctx.rechEstilo++; return null; }
     // Nunca dos prendas vaqueras juntas (vaquero con chaqueta vaquera)
-    if ([it.arriba, it.abajo, it.uno, it.capa].filter(function (p) { return p && esVaquera(p); }).length >= 2) { ctx.rechVaquero++; return null; }
+    if ([it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(function (p) { return p && esVaquera(p); }).length >= 2) { ctx.rechVaquero++; return null; }
     var penEstilo = (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) ? 0.12 : 0;
     var pares = paresDe(it), sw = 0, ss = 0;
     pares.forEach(function (x) { sw += x[2]; ss += x[2] * colorPar(x[0].color, x[1].color); });
@@ -1158,12 +1160,12 @@
     piezas.forEach(function (p) { if (p.color && NEUTROS.indexOf(p.color) < 0) vivos[p.color] = 1; });
     var nv = Object.keys(vivos).length;
     if (nv > 3) color *= 0.7; else if (nv > 2) color *= 0.85;
-    var estamp = [it.arriba, it.abajo, it.uno, it.capa].filter(function (p) { return p && esEstampada(p); }).length;
+    var estamp = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(function (p) { return p && esEstampada(p); }).length;
     if (estamp >= 2) color *= 0.8;
 
     var nivel = ctx.nivel;
     var temporada = piezas.reduce(function (s, p) { return s + sc(p, nivel); }, 0) / piezas.length;
-    var alto = (it.arriba ? calidez(it.arriba) : calidez(it.uno)) + (it.capa ? calidez(it.capa) : 0);
+    var alto = (it.arriba ? calidez(it.arriba) : calidez(it.uno)) + (it.capa || it.capa2 ? Math.max(it.capa ? calidez(it.capa) : 0, it.capa2 ? calidez(it.capa2) : 0) + (it.capa && it.capa2 ? 0.5 : 0) : 0);
     var scAlto = 1 - Math.min(1, Math.abs(alto - nivel) / 2.5);
     var termico = scAlto;
     if (it.abajo) {
@@ -1200,20 +1202,20 @@
     });
     if (peor && peor.s < 0.5) avisos.push("Los colores «" + peor.a + "» y «" + peor.b + "» podrían no combinar del todo.");
     else if (cols.length) razones.push("Colores que combinan bien: " + cols.join(", ") + ".");
-    var estamp = [it.arriba, it.abajo, it.uno, it.capa].filter(function (p) { return p && esEstampada(p); });
+    var estamp = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(function (p) { return p && esEstampada(p); });
     if (estamp.length >= 2) avisos.push("Hay dos prendas con estampado o rayas (" + nombresLista(estamp) + "): puede quedar recargado.");
     var sinColor = piezas.filter(function (p) { return !p.color; });
     if (sinColor.length) avisos.push("Sin color indicado en " + nombresLista(sinColor) + ": no he podido comprobar del todo si combinan.");
     var sinTalla = piezas.filter(function (p) { return !p.talla && !esComplemento(p); });
     if (sinTalla.length) avisos.push("Sin talla en " + nombresLista(sinTalla) + ": no he podido comprobar la talla.");
-    razones.push("Abrigo pensado para un día " + NIVEL_NOMBRE[o.nivel] + (it.capa ? ", con una capa extra para el fresco" : "") + ".");
+    razones.push("Abrigo pensado para un día " + NIVEL_NOMBRE[o.nivel] + (it.capa2 ? ", con sudadera o jersey debajo del abrigo" : it.capa ? ", con una capa extra para el fresco" : "") + ".");
     if (ctx.h.hayHistorial) {
       var nunca = piezas.filter(function (p) { return ctx.h.ultimo[p.id] === undefined; });
       var viejas = piezas.filter(function (p) { return ctx.h.ultimo[p.id] !== undefined && ctx.h.ultimo[p.id] >= 14; });
       if (nunca.length) razones.push("Incluye prendas que aún no ha llevado: " + nombresLista(nunca.slice(0, 2)) + ".");
       if (viejas.length) razones.push("«" + viejas[0].nombre + "» lleva " + ctx.h.ultimo[viejas[0].id] + " días sin usarse.");
     }
-    var ropaEst = [it.arriba, it.abajo, it.uno, it.capa].filter(Boolean).map(estiloDe);
+    var ropaEst = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(Boolean).map(estiloDe);
     var maxEst = Math.max.apply(null, ropaEst), minEst = Math.min.apply(null, ropaEst);
     razones.push("Estilo coherente: conjunto " + NOMBRE_ESTILO[maxEst === minEst ? maxEst : 1] + ".");
     if (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) avisos.push("«" + it.calzado.nombre + "» es de un estilo muy distinto al resto de la ropa.");
@@ -1255,16 +1257,19 @@
 
     var cand = [];
     bases.forEach(function (base) {
-      var capasOk = [null];
+      var capasOk = [[null, null]];
       capas.forEach(function (c) {
         if (base.arriba && base.arriba.id === c.id) return;
-        if (!capaValidaSobre(base.arriba, c)) return;
-        if ((c.categoria === "Sudaderas" || c.categoria === "Jerséis") && base.arriba && (base.arriba.categoria === "Sudaderas" || base.arriba.categoria === "Jerséis")) return;
-        capasOk.push(c);
+        capasOk.push([c, null]);
+        // Sobre una sudadera o un jersey no va nada, salvo un abrigo grueso cuando hace mucho frío.
+        if (nivel === 4 && (c.categoria === "Sudaderas" || c.categoria === "Jerséis")) {
+          capas.forEach(function (g) { if (g.id !== c.id && g.categoria === "Abrigos y chaquetas" && esCapaGruesa(g)) capasOk.push([c, g]); });
+        }
       });
-      capasOk.forEach(function (capa) {
+      capasOk.forEach(function (par) {
+        var capa = par[0], capa2 = par[1];
         (zapatos.length ? zapatos : [null]).forEach(function (z) {
-          var ev = evaluar({ arriba: base.arriba || null, abajo: base.abajo || null, uno: base.uno || null, capa: capa, calzado: z, acc: null }, ctx);
+          var ev = evaluar({ arriba: base.arriba || null, abajo: base.abajo || null, uno: base.uno || null, capa: capa, capa2: capa2, calzado: z, acc: null }, ctx);
           if (ev) cand.push(ev);
         });
       });
@@ -1273,7 +1278,7 @@
     if (!cand.length) {
       var falta = [];
       if (!unos.length) {
-        if (!arribas.length) falta.push("una parte de arriba (camiseta, camisa, jersey o sudadera)");
+        if (!arribas.length) falta.push("una prenda base de arriba (camiseta, body o camisa; la sudadera y el jersey van encima)");
         if (!abajos.length) falta.push("una parte de abajo (pantalón…)");
       }
       var msg;
@@ -1295,7 +1300,7 @@
     });
 
     elegidos.forEach(function (o) {
-      var Asup = o.it.capa || o.it.arriba || o.it.uno, Binf = o.it.abajo || o.it.uno;
+      var Asup = o.it.capa2 || o.it.capa || o.it.arriba || o.it.uno, Binf = o.it.abajo || o.it.uno;
       var acc = mejorComplemento(accesorios, [Asup, Binf], h, 0.75);
       var calc = mejorComplemento(calcetines, [o.it.calzado, Binf], h, 0.65);
       var gor = mejorComplemento(gorros, [Asup], h, 0.75);
@@ -1314,6 +1319,7 @@
     if (it.uno) piezas.push([it.uno, it.uno.categoria === "Monos" ? "Mono" : it.uno.categoria === "Vestidos" ? "Vestido" : "Conjunto"]);
     else { piezas.push([it.arriba, "Arriba"]); piezas.push([it.abajo, "Abajo"]); }
     if (it.capa) piezas.push([it.capa, "Capa"]);
+    if (it.capa2) piezas.push([it.capa2, "Abrigo"]);
     if (it.calzado) piezas.push([it.calzado, "Calzado"]);
     if (it.calcetin) piezas.push([it.calcetin, "Calcetines"]);
     if (it.gorro) piezas.push([it.gorro, "Gorro"]);
