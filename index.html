@@ -6,6 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Armario de Juan">
 <meta name="theme-color" content="#e9dfd0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
 <title>El armario de Juan</title>
 <style>
   :root {
@@ -246,6 +250,14 @@
     <div class="grid" id="grid"></div>
     <div class="vacio" id="vacio" hidden>Todavía no hay prendas.<br>Pulsa <b>Añadir</b> abajo para hacer la primera foto.</div>
     <div class="vacio" id="sinResultados" hidden>Ninguna prenda coincide con la búsqueda o los filtros.</div>
+    <details class="mas" id="copiaDet" style="margin-top:18px"><summary>Copia de seguridad</summary><div class="dentro">
+      <p class="nota">La copia guarda tus prendas, conjuntos, calendario y sugerencias. Las fotos ya están a salvo en tu Dropbox, no hace falta copiarlas.</p>
+      <button class="btn" id="btnCopiaDropbox">Guardar copia en Dropbox</button>
+      <button class="btn sec" id="btnCopiaDescargar">Descargar copia al móvil</button>
+      <button class="btn sec" id="btnCopiaRestaurar">Restaurar desde un archivo</button>
+      <input type="file" id="fileRestaurar" accept=".json,application/json" hidden>
+      <p class="nota" id="msgCopia" style="margin-top:8px"></p>
+    </div></details>
     <div class="pie"><button class="linkbtn" id="btnSalir">Desconectar de Dropbox</button></div>
   </section>
 
@@ -1735,6 +1747,44 @@
   }
 
 
+
+  // ================== Copia de seguridad ==================
+  function fechaCopia() { var d = new Date(), p = function (n) { return String(n).padStart(2, "0"); }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "_" + p(d.getHours()) + "-" + p(d.getMinutes()); }
+  function resumenInv(inv) { return inv.prendas.length + " prendas, " + inv.conjuntos.length + " conjuntos favoritos, " + inv.calendario.length + " días en el calendario"; }
+  async function copiaDropbox() {
+    var m = $("msgCopia"); m.textContent = "Guardando…";
+    try {
+      var inv = await leerInventario(), nombre = "/copias/inventario_" + fechaCopia() + ".json";
+      await subir(nombre, new Blob([JSON.stringify(inv, null, 1)], { type: "application/octet-stream" }));
+      m.textContent = "Copia guardada (" + resumenInv(inv) + "). La tienes en Dropbox, en la carpeta «copias» de la app.";
+    } catch (e) { m.textContent = "No se pudo guardar la copia: " + e.message; }
+  }
+  async function copiaDescargar() {
+    var m = $("msgCopia"); m.textContent = "Preparando…";
+    try {
+      var inv = await leerInventario();
+      var url = URL.createObjectURL(new Blob([JSON.stringify(inv, null, 1)], { type: "application/json" }));
+      var a = document.createElement("a"); a.href = url; a.download = "armario-juan_" + fechaCopia() + ".json";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      m.textContent = "Copia descargada (" + resumenInv(inv) + ").";
+    } catch (e) { m.textContent = "No se pudo descargar: " + e.message; }
+  }
+  async function restaurarArchivo(file) {
+    var m = $("msgCopia");
+    try {
+      var datos = JSON.parse(await file.text());
+      if (!datos || !Array.isArray(datos.prendas)) throw new Error("Este archivo no parece una copia del armario.");
+      var nuevo = normalizarInv(datos);
+      if (!confirm("Vas a sustituir tu armario actual por la copia (" + resumenInv(nuevo) + "). Antes se guardará una copia del estado actual en Dropbox. ¿Continuar?")) { m.textContent = "Cancelado. No se ha cambiado nada."; return; }
+      m.textContent = "Restaurando…";
+      var actual = await leerInventario();
+      await subir("/copias/antes-de-restaurar_" + fechaCopia() + ".json", new Blob([JSON.stringify(actual, null, 1)], { type: "application/octet-stream" }));
+      await modificarInv(function (inv) { Object.keys(inv).forEach(function (k) { delete inv[k]; }); Object.assign(inv, nuevo); });
+      m.textContent = "Restaurado: " + resumenInv(nuevo) + ".";
+      renderArmario();
+    } catch (e) { m.textContent = "No se pudo restaurar: " + (e.message || e); }
+  }
+
   // ================== Completar mi armario (Fase 6) ==================
   var B_ = "Pantalones y partes de abajo";
   var TIPOS = [
@@ -2261,6 +2311,10 @@
       if (f && C.resultados[parseInt(f.getAttribute("data-favc"), 10)]) guardarFavorito(C.resultados[parseInt(f.getAttribute("data-favc"), 10)].ids);
     });
 
+    $("btnCopiaDropbox").addEventListener("click", copiaDropbox);
+    $("btnCopiaDescargar").addEventListener("click", copiaDescargar);
+    $("btnCopiaRestaurar").addEventListener("click", function () { $("fileRestaurar").value = ""; $("fileRestaurar").click(); });
+    $("fileRestaurar").addEventListener("change", function () { if (this.files[0]) restaurarArchivo(this.files[0]); });
     $("btnConectar").addEventListener("click", iniciarConexion);
     $("btnSalir").addEventListener("click", function () {
       if (!confirm("¿Desconectar de Dropbox en este navegador? Tus prendas y fotos siguen guardadas en Dropbox.")) return;
