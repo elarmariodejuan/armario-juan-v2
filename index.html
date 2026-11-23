@@ -80,7 +80,7 @@
   details.filtros summary { padding: 12px 14px; font-size: 15px; color: var(--marron); font-weight: 600; list-style: none; }
   details.filtros summary::-webkit-details-marker { display: none; }
   .filtros-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 14px 14px; }
-  select, input[type=text] {
+  select, input[type=text], input[type=date] {
     width: 100%; padding: 12px; border: 1px solid var(--linea); border-radius: 12px;
     background: var(--blanco); font-size: 16px; color: var(--texto); font-family: inherit;
   }
@@ -212,6 +212,7 @@
   .mini-grid.reales .im { border: 2px solid var(--salvia); }
   .sw { display: inline-flex; align-items: center; gap: 6px; margin: 4px 10px 4px 0; font-size: 13.5px; }
   .sw i { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--linea); display: inline-block; }
+  input[type=date] { min-height: 50px; -webkit-appearance: none; appearance: none; text-align: left; }
   .vacio-caja { background: var(--blanco); border-radius: 18px; padding: 20px; line-height: 1.5; font-size: 15px; }
 </style>
 </head>
@@ -243,7 +244,7 @@
         <select id="fColor"></select>
         <select id="fTemp"></select>
         <select id="fFav"><option value="">Todas</option><option value="1">Solo favoritas</option></select>
-        <select id="fOrigen"><option value="">Propias y prestadas</option><option value="pend">Prestadas (por devolver)</option><option value="propias">Solo propias</option></select>
+        <select id="fOrigen"><option value="">Propias y prestadas</option><option value="pend">Prestadas (por devolver)</option><option value="prest">Todas las prestadas</option><option value="propias">Solo propias</option></select>
         <button class="btn sec" id="btnLimpiar" style="margin-top:0;padding:12px">Quitar filtros</button>
       </div>
     </details>
@@ -300,11 +301,15 @@
         <div class="campo"><span class="etq">Colores secundarios</span><div class="colores" id="coloresS"></div></div>
         <div class="campo"><label for="fTemp2">Temporada</label><select id="fTemp2"></select></div>
         <div class="campo"><span class="etq">Nivel de abrigo</span><div class="seg" id="segAbrigo"></div></div>
-        <div class="campo"><label for="fTejido">Tejido</label><input type="text" id="fTejido" placeholder="Ej.: algodón, lana, vaquero" maxlength="40"></div>
-        <div class="campo"><label for="fMarca">Marca</label><input type="text" id="fMarca" list="listaMarcas" placeholder="Ej.: H&amp;M, Sfera, Zara" maxlength="40" autocomplete="off"><datalist id="listaMarcas"></datalist><p class="nota" id="notaMarca" style="margin:6px 0 0" hidden></p></div>
+        <div class="campo"><label for="fTejido">Tejido</label><select id="fTejido"></select><input type="text" id="fTejidoOtro" placeholder="Escribe el tejido" maxlength="40" style="margin-top:8px" hidden></div>
+        <div class="campo"><label for="fMarca">Marca</label><select id="fMarca"></select><input type="text" id="fMarcaOtro" placeholder="Escribe la marca" maxlength="40" style="margin-top:8px" hidden autocomplete="off"><p class="nota" id="notaMarca" style="margin:6px 0 0" hidden></p></div>
         <div class="campo"><span class="etq">¿Cómo le queda?</span><div class="seg" id="segAjuste"></div><p class="nota" style="margin:6px 0 0">Sirve para saber cómo talla cada marca. Se apunta con la talla de Juan de ahora.</p></div>
         <div class="campo"><span class="etq">Procedencia</span><div class="seg" id="segOrigen"></div>
-          <input type="text" id="fPrestadaDe" list="listaPersonas" placeholder="¿De quién es? (para devolverla)" maxlength="40" style="margin-top:8px" hidden autocomplete="off"><datalist id="listaPersonas"></datalist></div>
+          <div id="bloquePrestada" hidden style="margin-top:8px">
+            <select id="fPrestadaDe"></select>
+            <input type="text" id="fPrestadaOtro" placeholder="Nombre de la persona" maxlength="40" style="margin-top:8px" hidden autocomplete="off">
+            <div class="seg" id="segDevolver" style="margin-top:8px"></div>
+          </div></div>
         <div class="campo"><label for="fEstado">Estado</label><select id="fEstado"></select></div>
         <div class="campo"><span class="etq">Favorita</span><div class="seg"><button type="button" id="btnFavForm">♥ Marcar como favorita</button></div></div>
       </div>
@@ -405,6 +410,13 @@
   // Etiquetas con un solo mes (las venden así algunas tiendas). Cuentan como la talla en la que ese mes es el límite superior:
   // 12 meses ≈ 9-12, 18 meses ≈ 12-18, 24 meses ≈ 18-24 (coincide con las tablas habituales: 80 cm, 86 cm, 92 cm).
   var EQUIV = { "3 meses": "0-3 meses", "6 meses": "3-6 meses", "9 meses": "6-9 meses", "12 meses": "9-12 meses", "18 meses": "12-18 meses", "24 meses": "18-24 meses" };
+  // Tallas en centímetros (tablas europeas habituales de ropa infantil). Aproximado: cada marca puede variar un poco.
+  var CM = { "50 cm": "0-3 meses", "56 cm": "0-3 meses", "62 cm": "0-3 meses", "68 cm": "3-6 meses", "74 cm": "6-9 meses", "80 cm": "9-12 meses", "86 cm": "12-18 meses", "92 cm": "18-24 meses",
+    "98 cm": "2 años", "104 cm": "3 años", "110 cm": "4 años", "116 cm": "5 años", "122 cm": "6 años", "128 cm": "7 años", "134 cm": "8 años", "140 cm": "9 años", "146 cm": "10 años", "152 cm": "11 años", "158 cm": "12 años" };
+  Object.keys(CM).forEach(function (k) { EQUIV[k] = CM[k]; });
+  var TALLAS_CM = Object.keys(CM);
+  var DEVOLVER = [["si", "Hay que devolverla"], ["no", "No hay que devolverla"]];
+  var TEJIDOS_BASE = ["Algodón", "Algodón orgánico", "Punto", "Punto grueso", "Felpa", "Rizo", "Pana", "Vaquero", "Lana", "Forro polar", "Muselina", "Lino", "Poliéster", "Terciopelo", "Acolchado"];
   var TALLAS_SUELTAS = ["3 meses", "6 meses", "9 meses", "12 meses", "18 meses", "24 meses"];
   var TEMPORADAS = ["primavera", "verano", "otoño", "invierno", "todo el año"];
   var ABRIGOS = ["ligero", "medio", "calentito"];
@@ -414,6 +426,7 @@
   var ESTADOS = ["disponible", "guardada", "fuera de temporada", "devuelta"];
   var AJUSTES = [["grande", "Le queda grande"], ["bien", "Le queda bien"], ["justa", "Le queda justa"]];
   var ORIGENES = [["propia", "Suya / comprada"], ["prestada", "Prestada"]];
+  function porDevolver(p) { return p.origen === "prestada" && p.estado !== "devuelta" && p.devolver !== false; }
   var COLORES = [
     ["Blanco", "#ffffff"], ["Crudo", "#f1e9da"], ["Beige", "#d9c7a6"], ["Arena", "#c8b08a"], ["Marrón", "#7a5a3f"],
     ["Negro", "#2b2926"], ["Gris", "#9a9a98"], ["Azul marino", "#26385c"], ["Azul", "#4a72b0"], ["Celeste", "#9cc3e0"],
@@ -714,7 +727,8 @@
       if (f.color && p.color !== f.color && (p.colores2 || []).indexOf(f.color) < 0) return false;
       if (f.temp && p.temporada !== f.temp && p.temporada !== "todo el año") return false;
       if (f.fav && !p.favorito) return false;
-      if (f.origen === "pend" && !(p.origen === "prestada" && p.estado !== "devuelta")) return false;
+      if (f.origen === "pend" && !porDevolver(p)) return false;
+      if (f.origen === "prest" && p.origen !== "prestada") return false;
       if (f.origen === "propias" && p.origen === "prestada") return false;
       return true;
     });
@@ -782,13 +796,13 @@
     fila("Tejido", esc(p.tejido));
     fila("Marca", esc(p.marca));
     fila("Cómo le queda", p.ajuste ? esc((AJUSTES.filter(function (x) { return x[0] === p.ajuste; })[0] || [0, p.ajuste])[1]) + (p.ajusteTalla ? " <small>(con talla " + esc(p.ajusteTalla) + ")</small>" : "") : "");
-    if (p.origen === "prestada") fila("Procedencia", "Prestada" + (p.prestadaDe ? " por " + esc(p.prestadaDe) : "") + (p.estado === "devuelta" ? ' <span class="chip">devuelta</span>' : ' <span class="chip aviso">por devolver</span>'));
+    if (p.origen === "prestada") fila("Procedencia", "Prestada" + (p.prestadaDe ? " por " + esc(p.prestadaDe) : "") + (p.estado === "devuelta" ? ' <span class="chip">devuelta</span>' : p.devolver === false ? ' <span class="chip">no hay que devolverla</span>' : ' <span class="chip aviso">por devolver</span>'));
     fila("Estado", esc(p.estado));
     $("hoja").innerHTML = '<div class="grande"><img id="imgGrande" alt=""></div>'
       + "<h3>" + esc(p.nombre) + "</h3>"
       + '<dl class="ficha">' + filas.join("") + "</dl>"
       + '<button class="btn sec" data-acc="fav" data-id="' + esc(p.id) + '">' + (p.favorito ? "♥ Quitar de favoritas" : "♡ Marcar como favorita") + "</button>"
-      + (p.origen === "prestada" && p.estado !== "devuelta" ? '<button class="btn sec" data-acc="devuelta" data-id="' + esc(p.id) + '">Marcar como devuelta</button>' : "")
+      + (porDevolver(p) ? '<button class="btn sec" data-acc="devuelta" data-id="' + esc(p.id) + '">Marcar como devuelta</button>' : "")
       + '<button class="btn" data-acc="editar" data-id="' + esc(p.id) + '">Editar</button>'
       + '<button class="btn peligro" data-acc="eliminar" data-id="' + esc(p.id) + '">Eliminar</button>'
       + '<button class="btn sec" data-acc="cerrar">Cerrar</button>';
@@ -881,10 +895,10 @@
     $("fNombre").value = p ? p.nombre : "";
     llenarCategoriasForm(p ? p.categoria : ultimaCategoria);
     $("fTipo").value = p ? (p.tipo || "") : "";
-    $("fTejido").value = p ? (p.tejido || "") : "";
     var th = '<option value="">Sin indicar</option>';
     TALLAS.forEach(function (t) {
-      if (t === "2 años") th += '<optgroup label="Si la etiqueta trae un solo mes">' + TALLAS_SUELTAS.map(function (x) { return '<option value="' + x + '">' + x + "</option>"; }).join("") + "</optgroup>";
+      if (t === "2 años") th += '<optgroup label="Si la etiqueta trae centímetros">' + TALLAS_CM.map(function (x) { return '<option value="' + x + '">' + x + "</option>"; }).join("") + "</optgroup>"
+        + '<optgroup label="Si la etiqueta trae un solo mes">' + TALLAS_SUELTAS.map(function (x) { return '<option value="' + x + '">' + x + "</option>"; }).join("") + "</optgroup>";
       th += '<option value="' + esc(t) + '">' + esc(t) + "</option>";
     });
     th += '<option value="__otra">Otra…</option>';
@@ -904,18 +918,55 @@
     $("nomColorP").textContent = F.color;
     pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
     pintarPares($("segEstilo"), ESTILOS, F.estilo);
-    $("fMarca").value = p ? (p.marca || "") : "";
-    $("listaMarcas").innerHTML = marcasUsadas().map(function (m) { return '<option value="' + esc(m) + '">'; }).join("");
-    $("listaPersonas").innerHTML = personasUsadas().map(function (m) { return '<option value="' + esc(m) + '">'; }).join("");
-    $("fPrestadaDe").value = p ? (p.prestadaDe || "") : "";
+    pintarListaSel("fMarca", "fMarcaOtro", "marca", [], p ? p.marca : "", "Sin indicar");
+    pintarListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", [], p ? p.prestadaDe : "", "Elige la persona");
+    pintarListaSel("fTejido", "fTejidoOtro", "tejido", TEJIDOS_BASE, p ? p.tejido : "", "Sin indicar");
+    F.devolver = p && p.origen === "prestada" ? (p.devolver === false ? "no" : "si") : "no";
     pintarAjusteOrigen(); mostrarNotaMarca();
     pintarFavForm();
     $("masDetalles").open = !!p;
   }
+  // Desplegable con las opciones ya usadas y "Otra…" para escribir una nueva (que luego aparece en la lista)
+  function listaOpciones(campo, base) {
+    var out = [], vistos = {};
+    (base || []).concat(valoresUsados(campo).slice().sort(function (a, b) { return a.localeCompare(b, "es"); })).forEach(function (v) {
+      var k = norm(v); if (!k || vistos[k]) return; vistos[k] = 1; out.push(v);
+    });
+    return out;
+  }
+  function pintarListaSel(selId, otroId, campo, base, valor, textoVacio) {
+    var lista = listaOpciones(campo, base), sel = $(selId), h = '<option value="">' + esc(textoVacio) + "</option>";
+    lista.forEach(function (v) { h += '<option value="' + esc(v) + '">' + esc(v) + "</option>"; });
+    h += '<option value="__otra">➕ Otra…</option>';
+    sel.innerHTML = h;
+    var hit = valor ? lista.filter(function (v) { return norm(v) === norm(valor); })[0] : "";
+    sel.value = hit || ""; $(otroId).value = ""; $(otroId).hidden = true;
+  }
+  function leerListaSel(selId, otroId, campo, base) {
+    var v = $(selId).value;
+    if (v === "__otra") v = $(otroId).value.trim();
+    if (!v) return "";
+    var ya = listaOpciones(campo, base).filter(function (x) { return norm(x) === norm(v); })[0];
+    return ya || v;
+  }
+  function conectarListaSel(selId, otroId, alCambiar) {
+    $(selId).addEventListener("change", function () {
+      var otra = $(selId).value === "__otra"; $(otroId).hidden = !otra; if (otra) $(otroId).focus();
+      if (alCambiar) alCambiar();
+    });
+    $(otroId).addEventListener("input", function () { if (alCambiar) alCambiar(); });
+  }
+  // Por defecto, una persona nueva "no" pide la prenda de vuelta; si ya prestó otras, se repite lo último
+  function devolverPorDefecto(persona) {
+    var k = norm(persona || ""); if (!k) return "no";
+    var l = S.inv.prendas.filter(function (p) { return p.origen === "prestada" && norm(p.prestadaDe || "") === k; });
+    return l.length && l[l.length - 1].devolver !== false ? "si" : "no";
+  }
   function pintarAjusteOrigen() {
     pintarPares($("segAjuste"), AJUSTES, F.ajuste);
     pintarPares($("segOrigen"), ORIGENES, F.origen);
-    $("fPrestadaDe").hidden = F.origen !== "prestada";
+    $("bloquePrestada").hidden = F.origen !== "prestada";
+    pintarPares($("segDevolver"), DEVOLVER, F.devolver);
   }
   function marcasUsadas() { return valoresUsados("marca"); }
   function personasUsadas() { return valoresUsados("prestadaDe"); }
@@ -967,10 +1018,11 @@
       var datos = {
         nombre: nombre, categoria: cat, tipo: $("fTipo").value.trim(), talla: talla,
         color: F.color, colores2: F.colores2.filter(function (x) { return x !== F.color; }),
-        temporada: $("fTemp2").value, abrigo: F.abrigo, estilo: F.estilo, tejido: $("fTejido").value.trim(),
+        temporada: $("fTemp2").value, abrigo: F.abrigo, estilo: F.estilo, tejido: leerListaSel("fTejido", "fTejidoOtro", "tejido", TEJIDOS_BASE),
         estado: $("fEstado").value || "disponible", favorito: F.favorito,
-        marca: unificarMarca($("fMarca").value.trim()), ajuste: F.ajuste, origen: F.origen,
-        prestadaDe: F.origen === "prestada" ? $("fPrestadaDe").value.trim() : ""
+        marca: leerListaSel("fMarca", "fMarcaOtro", "marca", []), ajuste: F.ajuste, origen: F.origen,
+        prestadaDe: F.origen === "prestada" ? leerListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", []) : "",
+        devolver: F.origen === "prestada" ? F.devolver === "si" : false
       };
       // El ajuste se apunta con la talla de Juan de ese momento; solo se actualiza si lo cambias
       if (F.ajuste !== (editando ? (editando.ajuste || "") : "")) datos.ajusteTalla = F.ajuste ? tallaRopaEf(S.inv.ajustes) : "";
@@ -1881,7 +1933,7 @@
     return g;
   }
   function mostrarNotaMarca() {
-    var el = $("notaMarca"), m = norm($("fMarca").value.trim()), t = m ? tendenciaMarcas()[m] : null;
+    var el = $("notaMarca"), m = norm(leerListaSel("fMarca", "fMarcaOtro", "marca", [])), t = m ? tendenciaMarcas()[m] : null;
     if (!t) { el.hidden = true; return; }
     el.hidden = false;
     el.textContent = "Según tus datos, " + t.nombre + " " + t.txt + " (" + t.n + (t.n === 1 ? " prenda" : " prendas") + ")" + (t.n < 3 ? ": aún son pocos datos." : ".");
@@ -1915,9 +1967,10 @@
     }
     h += "</div>";
     // Prestadas
-    var pend = (S.inv.prendas || []).filter(function (p) { return p.origen === "prestada" && p.estado !== "devuelta"; });
+    var pend = (S.inv.prendas || []).filter(porDevolver);
+    var sinDev = (S.inv.prendas || []).filter(function (p) { return p.origen === "prestada" && p.estado !== "devuelta" && p.devolver === false; }).length;
     var dev = (S.inv.prendas || []).filter(function (p) { return p.origen === "prestada" && p.estado === "devuelta"; }).length;
-    if (pend.length || dev) {
+    if (pend.length || dev || sinDev) {
       var porPersona = {};
       pend.forEach(function (p) { var k = (p.prestadaDe || "").trim() || "Sin indicar de quién"; (porPersona[k] = porPersona[k] || []).push(p.nombre); });
       h += '<div class="card"><h2>Prendas prestadas</h2>';
@@ -1925,7 +1978,8 @@
         h += '<p class="nota" style="margin:0 0 6px">' + pend.length + (pend.length === 1 ? " prenda por devolver" : " prendas por devolver") + (dev ? " · " + dev + " ya devueltas" : "") + ".</p>";
         h += Object.keys(porPersona).sort().map(function (k) { return '<div class="barra" style="display:block"><b>' + esc(k) + " (" + porPersona[k].length + ")</b><br><span style=\"color:var(--suave);font-size:13.5px\">" + porPersona[k].map(esc).join(", ") + "</span></div>"; }).join("");
         h += '<p class="nota" style="margin:8px 0 0">Para verlas con foto: Armario › Filtros › «Prestadas (por devolver)».</p>';
-      } else h += '<p class="nota" style="margin:0">No tienes nada pendiente de devolver (' + dev + " ya devueltas).</p>";
+      } else h += '<p class="nota" style="margin:0">No tienes nada pendiente de devolver' + (dev ? " (" + dev + " ya devueltas)" : "") + ".</p>";
+      if (sinDev) h += '<p class="nota" style="margin:8px 0 0">Además, ' + sinDev + (sinDev === 1 ? " prenda prestada que no hay que devolver." : " prendas prestadas que no hay que devolver.") + "</p>";
       h += "</div>";
     }
     return h;
@@ -2392,6 +2446,8 @@
     var aj = S.inv.ajustes || {};
     $("fNacimiento").value = aj.nacimiento || "";
     llenarSelect($("selTallaRopa"), mesesDe(aj.nacimiento) !== null ? "Automática (según su edad)" : "Sin indicar", TALLAS.filter(function (t) { return !/^Calzado/.test(t) && t !== "Talla única"; }), aj.tallaRopa);
+    $("selTallaRopa").insertAdjacentHTML("beforeend", '<optgroup label="Altura (cm)">' + TALLAS_CM.map(function (x) { return '<option value="' + x + '">' + x + "</option>"; }).join("") + "</optgroup>");
+    $("selTallaRopa").value = aj.tallaRopa || "";
     llenarSelect($("selTallaCalzado"), "Sin indicar", TALLAS.filter(function (t) { return /^Calzado/.test(t); }), aj.tallaCalzado);
     $("selUsaCalzado").value = aj.usaCalzado ? "si" : "no";
     pintarNotaEdad(aj);
@@ -2603,9 +2659,16 @@
     $("segOrigen").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
       F.origen = b.getAttribute("data-v"); pintarAjusteOrigen();
-      if (F.origen === "prestada") $("fPrestadaDe").focus();
     });
-    $("fMarca").addEventListener("input", mostrarNotaMarca);
+    $("segDevolver").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      F.devolver = b.getAttribute("data-v"); pintarAjusteOrigen();
+    });
+    conectarListaSel("fMarca", "fMarcaOtro", mostrarNotaMarca);
+    conectarListaSel("fTejido", "fTejidoOtro");
+    conectarListaSel("fPrestadaDe", "fPrestadaOtro", function () {
+      F.devolver = devolverPorDefecto(leerListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", [])); pintarAjusteOrigen();
+    });
     $("btnFavForm").addEventListener("click", function () { F.favorito = !F.favorito; pintarFavForm(); });
     $("btnGuardar").addEventListener("click", guardarPrenda);
     $("btnCancelar").addEventListener("click", function () { S.editId = null; irA("armario"); });
