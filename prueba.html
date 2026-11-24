@@ -311,6 +311,7 @@
             <div class="seg" id="segDevolver" style="margin-top:8px"></div>
           </div></div>
         <div class="campo"><label for="fConjunto">¿Viene en un conjunto?</label><select id="fConjunto"></select>
+          <select id="fConjuntoPieza" style="margin-top:8px" hidden></select>
           <input type="text" id="fConjuntoOtro" placeholder="Nombre del conjunto, ej.: Chándal azul" maxlength="40" style="margin-top:8px" hidden autocomplete="off">
           <p class="nota" style="margin:6px 0 0">Para prendas que compraste juntas (sudadera + pantalón de chándal). Cada pieza lleva su foto y se puede usar por separado.</p></div>
         <div class="campo"><label for="fEstado">Estado</label><select id="fEstado"></select></div>
@@ -940,11 +941,24 @@
     pintarListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", [], p ? p.prestadaDe : "", "Elige la persona");
     pintarListaSel("fTejido", "fTejidoOtro", "tejido", TEJIDOS_BASE, p ? p.tejido : "", "Sin indicar");
     pintarListaSel("fConjunto", "fConjuntoOtro", "conjunto", [], p ? p.conjunto : "", "No (prenda suelta)", "➕ Nuevo conjunto…");
+    pintarOpcionPiezaExistente(p);
     F.devolver = p && p.origen === "prestada" ? (p.devolver === false ? "no" : "si") : "no";
     pintarAjusteOrigen(); mostrarNotaMarca();
     pintarFavForm();
     $("masDetalles").open = !!p;
   }
+  // Opción "La otra pieza ya está en mi armario": enlaza esta prenda con otra ya subida
+  function pintarOpcionPiezaExistente(p) {
+    var sel = $("fConjunto"), pie = $("fConjuntoPieza");
+    var op = document.createElement("option"); op.value = "__existente"; op.textContent = "🔗 La otra pieza ya está en mi armario…";
+    sel.insertBefore(op, sel.querySelector('option[value="__otra"]'));
+    var h = '<option value="">Elige la prenda del conjunto…</option>';
+    S.inv.prendas.filter(function (x) { return !p || x.id !== p.id; }).forEach(function (x) {
+      h += '<option value="' + esc(x.id) + '">' + esc(x.nombre + " · " + x.categoria + (x.talla ? " · " + x.talla : "") + (x.conjunto ? " (ya en «" + x.conjunto + "»)" : "")) + "</option>";
+    });
+    pie.innerHTML = h; pie.hidden = true;
+  }
+  function piezaEnlazada() { return $("fConjunto").value === "__existente" ? S.inv.prendas.find(function (x) { return x.id === $("fConjuntoPieza").value; }) : null; }
   // Desplegable con las opciones ya usadas y "Otra…" para escribir una nueva (que luego aparece en la lista)
   function listaOpciones(campo, base) {
     var out = [], vistos = {};
@@ -1025,7 +1039,14 @@
     if (!F.foto && !editando) { err.textContent = "Falta la foto."; return; }
     if (!nombre) { err.textContent = "Falta el nombre."; $("fNombre").focus(); return; }
     if (!cat) { err.textContent = "Elige una categoría."; return; }
-    var conjunto = leerListaSel("fConjunto", "fConjuntoOtro", "conjunto", []);
+    var enlazada = piezaEnlazada(), conjunto;
+    if ($("fConjunto").value === "__existente") {
+      if (!enlazada) { $("masDetalles").open = true; err.textContent = "Elige cuál es la otra pieza del conjunto."; return; }
+      var nm = $("fConjuntoOtro").value.trim() || enlazada.conjunto || "";
+      if (!nm) { $("masDetalles").open = true; $("fConjuntoOtro").hidden = false; $("fConjuntoOtro").focus(); err.textContent = "Ponle nombre al conjunto, ej.: Chándal azul."; return; }
+      var ya = valoresUsados("conjunto").filter(function (x) { return norm(x) === norm(nm); })[0];
+      conjunto = ya || nm;
+    } else conjunto = leerListaSel("fConjunto", "fConjuntoOtro", "conjunto", []);
     if (siguiente && !conjunto) {
       $("masDetalles").open = true; $("fConjunto").value = "__otra"; $("fConjuntoOtro").hidden = false; $("fConjuntoOtro").focus();
       err.textContent = "Para añadir otra pieza, elige o escribe el nombre del conjunto (campo «¿Viene en un conjunto?»).";
@@ -1068,6 +1089,10 @@
         var i = inv.prendas.findIndex(function (x) { return x.id === id; });
         if (i >= 0) inv.prendas[i] = Object.assign({}, inv.prendas[i], datos, { modificada: ahora });
         else inv.prendas.unshift(Object.assign({ id: id, foto: rutaFoto, miniatura: rutaMini, creada: ahora }, datos));
+        if (enlazada) {
+          var j = inv.prendas.findIndex(function (x) { return x.id === enlazada.id; });
+          if (j >= 0) inv.prendas[j] = Object.assign({}, inv.prendas[j], { conjunto: conjunto, modificada: ahora });
+        }
       });
       // Si escribió una categoría igual a otra ya existente (con otra forma de escribirla), se usa la existente
       var vuelve = !!editando;
@@ -2722,7 +2747,16 @@
     });
     conectarListaSel("fMarca", "fMarcaOtro", mostrarNotaMarca);
     conectarListaSel("fTejido", "fTejidoOtro");
-    conectarListaSel("fConjunto", "fConjuntoOtro");
+    $("fConjunto").addEventListener("change", function () {
+      var v = $("fConjunto").value, ex = v === "__existente";
+      $("fConjuntoPieza").hidden = !ex;
+      $("fConjuntoOtro").hidden = !(v === "__otra" || ex);
+      $("fConjuntoOtro").placeholder = ex ? "Nombre del conjunto, ej.: Chándal azul" : "Nombre del conjunto, ej.: Chándal azul";
+      if (v === "__otra" || ex) { if (ex) $("fConjuntoPieza").focus(); else $("fConjuntoOtro").focus(); }
+    });
+    $("fConjuntoPieza").addEventListener("change", function () {
+      var q = piezaEnlazada(); if (q && q.conjunto) $("fConjuntoOtro").value = q.conjunto;
+    });
     conectarListaSel("fPrestadaDe", "fPrestadaOtro", function () {
       F.devolver = devolverPorDefecto(leerListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", [])); pintarAjusteOrigen();
     });
