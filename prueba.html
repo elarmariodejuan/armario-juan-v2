@@ -1,0 +1,2807 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Armario de Juan">
+<meta name="theme-color" content="#e9dfd0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<title>PRUEBA · El armario de Juan</title>
+<style>
+  :root {
+    --arena: #e9dfd0;
+    --beige: #f4eee4;
+    --blanco: #fbf9f4;
+    --salvia: #8a9a7b;
+    --salvia-osc: #6b7c5e;
+    --salvia-claro: #dfe5d8;
+    --marron: #7a6450;
+    --texto: #3d342b;
+    --suave: #8c7e70;
+    --linea: #d8ccb9;
+    --error: #a5483a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    background: var(--beige);
+    color: var(--texto);
+    min-height: 100vh;
+  }
+  header {
+    background: var(--arena);
+    padding: calc(env(safe-area-inset-top) + 16px) 20px 14px;
+    text-align: center;
+    border-bottom: 1px solid var(--linea);
+    position: sticky; top: 0; z-index: 20;
+  }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: 2.5px; color: var(--marron); font-weight: 600; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); }
+
+  .card { background: var(--blanco); border-radius: 18px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(122,100,80,.10); }
+  .card h2 { margin: 0 0 8px; font-size: 17px; }
+  .card p { margin: 6px 0; line-height: 1.45; font-size: 15px; }
+
+  button { font-family: inherit; }
+  .btn {
+    width: 100%; padding: 15px; margin-top: 12px; border: 0; border-radius: 14px;
+    background: var(--salvia); color: #fff; font-size: 16px; font-weight: 600;
+  }
+  .btn:active { background: var(--salvia-osc); }
+  .btn.sec { background: var(--arena); color: var(--marron); }
+  .btn.peligro { background: #f0dcd7; color: var(--error); }
+  .btn:disabled { opacity: .55; }
+
+  /* Pestañas inferiores */
+  nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--blanco); border-top: 1px solid var(--linea);
+    display: flex; padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  nav button {
+    flex: 1; background: none; border: 0; color: var(--suave);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10.5px; padding: 4px 0; min-width: 0;
+  }
+  nav button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  nav button.activa { color: var(--salvia-osc); font-weight: 600; }
+  nav button.pronto { opacity: .45; }
+
+  /* Armario */
+  .buscador { width: 100%; padding: 13px 14px; border: 1px solid var(--linea); border-radius: 14px; background: var(--blanco); font-size: 16px; color: var(--texto); }
+  details.filtros { margin: 10px 0 6px; background: var(--blanco); border-radius: 14px; border: 1px solid var(--linea); }
+  details.filtros summary { padding: 12px 14px; font-size: 15px; color: var(--marron); font-weight: 600; list-style: none; }
+  details.filtros summary::-webkit-details-marker { display: none; }
+  .filtros-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 14px 14px; }
+  select, input[type=text], input[type=date] {
+    width: 100%; padding: 12px; border: 1px solid var(--linea); border-radius: 12px;
+    background: var(--blanco); font-size: 16px; color: var(--texto); font-family: inherit;
+  }
+  .contador { font-size: 13px; color: var(--suave); margin: 8px 2px 10px; display: flex; justify-content: space-between; align-items: center; }
+  .linkbtn { background: none; border: 0; color: var(--salvia-osc); font-size: 13px; font-weight: 600; padding: 4px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  .tarjeta { background: var(--blanco); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 10px rgba(122,100,80,.10); }
+  .tarjeta .foto { position: relative; aspect-ratio: 1 / 1; background: var(--arena); }
+  .tarjeta .foto img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
+  .tarjeta .foto img.lista { opacity: 1; }
+  .tarjeta .info { padding: 10px 12px 12px; }
+  .tarjeta .nom { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tarjeta .meta { font-size: 12px; color: var(--suave); margin: 2px 0 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip { display: inline-block; font-size: 11.5px; padding: 3px 9px; border-radius: 20px; background: var(--salvia-claro); color: var(--salvia-osc); font-weight: 600; margin: 0 4px 4px 0; }
+  .chip.aviso { background: #f1e4cf; color: #8a6a3a; }
+  .fav {
+    position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%;
+    border: 0; background: rgba(251,249,244,.88); color: #c9bfb2; font-size: 18px; line-height: 1;
+  }
+  .fav.on { color: #c0605a; }
+  .vacio { text-align: center; padding: 40px 20px; color: var(--suave); line-height: 1.5; }
+
+  /* Formulario */
+  .campo { margin-bottom: 16px; }
+  .campo > label, .etq { display: block; font-size: 14px; font-weight: 600; color: var(--marron); margin-bottom: 6px; }
+  .req { color: var(--error); }
+  .zona-foto {
+    display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;
+    border: 2px dashed var(--linea); border-radius: 18px; background: var(--blanco);
+    min-height: 200px; overflow: hidden; color: var(--suave); font-size: 15px; position: relative;
+  }
+  .zona-foto img { width: 100%; max-height: 360px; object-fit: contain; display: block; background: var(--arena); }
+  .zona-foto input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 0; }
+  .zona-foto .plus { font-size: 34px; color: var(--salvia); line-height: 1; margin-bottom: 6px; }
+  .cambiar { font-size: 13px; color: var(--salvia-osc); font-weight: 600; margin-top: 6px; }
+  details.mas { background: var(--blanco); border-radius: 14px; border: 1px solid var(--linea); margin-bottom: 14px; }
+  details.mas summary { padding: 14px; font-size: 15px; font-weight: 600; color: var(--marron); list-style: none; }
+  details.mas summary::-webkit-details-marker { display: none; }
+  details.mas .dentro { padding: 0 14px 6px; }
+  .seg { display: flex; gap: 8px; flex-wrap: wrap; }
+  .seg button { flex: 1; min-width: 80px; padding: 11px 6px; border-radius: 12px; border: 1px solid var(--linea); background: var(--blanco); color: var(--texto); font-size: 14px; }
+  .seg button.on { background: var(--salvia); border-color: var(--salvia); color: #fff; font-weight: 600; }
+  .colores { display: flex; flex-wrap: wrap; gap: 10px; }
+  .colores button { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--linea); position: relative; padding: 0; }
+  .colores button.on { border-color: var(--salvia-osc); box-shadow: 0 0 0 3px var(--salvia-claro); }
+  .colores button.on::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; color: #fff; text-shadow: 0 0 3px rgba(0,0,0,.55); }
+  .color-nombre { font-size: 12.5px; color: var(--suave); margin-top: 6px; min-height: 16px; }
+  .error { color: var(--error); font-size: 14px; margin: 8px 0 0; min-height: 18px; }
+
+  /* Hoja de detalle */
+  .fondo { position: fixed; inset: 0; background: rgba(61,52,43,.45); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+  .hoja { background: var(--beige); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 22px 22px 0 0; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
+  .hoja .grande { width: 100%; aspect-ratio: 1 / 1; background: var(--arena); border-radius: 16px; overflow: hidden; }
+  .hoja .grande img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .hoja h3 { margin: 14px 0 6px; font-size: 20px; }
+  .ficha { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14.5px; margin: 8px 0 4px; }
+  .ficha dt { color: var(--suave); }
+  .ficha dd { margin: 0; }
+  .punto { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 1px solid var(--linea); vertical-align: -2px; margin-right: 5px; }
+
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom)); background: var(--texto); color: #fff; padding: 11px 18px; border-radius: 24px; font-size: 14.5px; z-index: 80; max-width: 88vw; text-align: center; }
+  .estado-ok { color: var(--salvia-osc); font-weight: 600; }
+  .estado-mal { color: var(--error); font-weight: 600; }
+  .pie { text-align: center; margin-top: 26px; }
+
+  /* Estilista */
+  .seg.wrap button { flex: 0 0 auto; min-width: 0; padding: 10px 14px; }
+  .nota { font-size: 14px; color: var(--suave); line-height: 1.45; margin: 4px 2px 14px; }
+  .conj { background: var(--blanco); border-radius: 18px; padding: 14px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(122,100,80,.10); }
+  .conj-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; }
+  .conj-fotos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .conj-fotos figure { margin: 0; text-align: center; min-width: 0; }
+  .conj-fotos .im { aspect-ratio: 1 / 1; background: var(--arena); border-radius: 12px; overflow: hidden; }
+  .conj-fotos img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
+  .conj-fotos img.lista { opacity: 1; }
+  .conj-fotos figcaption { font-size: 11px; color: var(--suave); margin-top: 4px; }
+  .conj-nombres { font-size: 14px; margin: 10px 0 0; line-height: 1.45; }
+  .razones { margin: 8px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.5; color: var(--texto); }
+  .aviso-caja { background: #f6ebd7; color: #7d5f2c; border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-top: 10px; line-height: 1.45; }
+  .t-ahora { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .t-grande { font-size: 38px; font-weight: 300; color: var(--marron); }
+  .t-fila { display: flex; justify-content: space-between; font-size: 14.5px; padding: 5px 0; border-bottom: 1px solid var(--arena); }
+  .t-fila span { color: var(--suave); }
+  .t-partes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 6px; }
+  .t-partes div { background: var(--beige); border-radius: 12px; padding: 9px 6px; text-align: center; font-size: 12.5px; color: var(--suave); }
+  .t-partes b { display: block; font-size: 18px; font-weight: 600; color: var(--texto); margin: 2px 0; }
+  .mini-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 12px; }
+  .mini-grid figure { margin: 0; min-width: 0; }
+  .mini-grid .im { aspect-ratio: 1 / 1; background: var(--arena); border-radius: 10px; overflow: hidden; }
+  .mini-grid img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
+  .mini-grid img.lista { opacity: 1; }
+  .mini-grid figcaption { font-size: 11px; margin-top: 3px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .mini-grid.stats figcaption { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .cap-nom { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cap-n { display: block; color: var(--suave); margin-top: 1px; }
+  .grupo-tit { font-size: 13px; font-weight: 600; color: var(--marron); margin-top: 8px; }
+  .cal-cab { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 8px; }
+  .cal-cab .linkbtn { font-size: 18px; padding: 6px 14px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+  .cal-nom { font-size: 12px; color: var(--suave); padding: 4px 0; }
+  .cal-dia { aspect-ratio: 1 / 1; border: 1.5px solid transparent; border-radius: 12px; background: transparent; font-size: 15px; color: var(--texto); position: relative; padding: 0; }
+  .cal-dia.hoy { border-color: var(--salvia); }
+  .cal-dia.sel { background: var(--salvia); color: #fff; }
+  .cal-dia.con::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--salvia-osc); }
+  .cal-dia.sel.con::after { background: #fff; }
+  .fila-btn { display: flex; gap: 8px; }
+  .fila-btn .btn { margin-top: 8px; }
+  .selp { cursor: pointer; }
+  .selp .im { position: relative; border: 2px solid transparent; }
+  .selp.on .im { border-color: var(--salvia-osc); }
+  .chk { display: none; position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: var(--salvia-osc); color: #fff; font-size: 14px; align-items: center; justify-content: center; }
+  .selp.on .chk { display: flex; }
+  .sug { background: var(--blanco); border: 2px dashed #c9b99f; border-radius: 18px; padding: 14px; margin-bottom: 14px; }
+  .sug-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .sello { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #8a6a3a; background: #f1e4cf; padding: 4px 10px; border-radius: 20px; }
+  .sug-fila { display: flex; gap: 12px; align-items: center; }
+  .sug-ilus { flex: 0 0 96px; text-align: center; }
+  .sug-ilus .caja { width: 96px; height: 96px; border: 1.5px dashed #c9b99f; border-radius: 14px; background: repeating-linear-gradient(45deg, #fbf9f4, #fbf9f4 8px, #f4eee4 8px, #f4eee4 16px); display: flex; align-items: center; justify-content: center; }
+  .sug-ilus svg { width: 74px; height: 74px; }
+  .sug-ilus small { display: block; font-size: 10.5px; color: var(--suave); margin-top: 4px; }
+  .sug-nombre { font-weight: 600; font-size: 16px; line-height: 1.3; }
+  .sug-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .sug-btns .btn { margin-top: 0; padding: 12px 6px; font-size: 14px; }
+  .barra { display: flex; justify-content: space-between; font-size: 14.5px; padding: 6px 0; border-bottom: 1px solid var(--arena); }
+  .barra b.cero { color: var(--error); }
+  .barra b.poco { color: #8a6a3a; }
+  .mini-grid.reales .im { border: 2px solid var(--salvia); }
+  .sw { display: inline-flex; align-items: center; gap: 6px; margin: 4px 10px 4px 0; font-size: 13.5px; }
+  .sw i { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--linea); display: inline-block; }
+  input[type=date] { min-height: 50px; -webkit-appearance: none; appearance: none; text-align: left; }
+  .vacio-caja { background: var(--blanco); border-radius: 18px; padding: 20px; line-height: 1.5; font-size: 15px; }
+</style>
+</head>
+<body>
+<header><h1>EL ARMARIO DE JUAN</h1><div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#8a6a3a">VERSIÓN DE PRUEBA</div></header>
+
+<main>
+  <!-- Pantalla de conexión -->
+  <section id="vConectar" hidden>
+    <div class="card">
+      <h2>Conectar con Dropbox</h2>
+      <p id="msgConexion">Pulsa el botón. Dropbox te pedirá permiso para que esta app use su propia carpeta privada. No ve nada más de tu Dropbox.</p>
+      <button class="btn" id="btnConectar">Conectar con Dropbox</button>
+    </div>
+  </section>
+
+  <section id="vCargando" hidden>
+    <div class="card"><p id="txtCargando">Cargando…</p></div>
+  </section>
+
+  <!-- Mi armario -->
+  <section id="vArmario" hidden>
+    <input class="buscador" id="busca" type="search" placeholder="Buscar por nombre…" autocomplete="off">
+    <details class="filtros" id="filtros">
+      <summary id="resumenFiltros">Filtros</summary>
+      <div class="filtros-grid">
+        <select id="fCat"></select>
+        <select id="fTalla"></select>
+        <select id="fColor"></select>
+        <select id="fTemp"></select>
+        <select id="fFav"><option value="">Todas</option><option value="1">Solo favoritas</option></select>
+        <select id="fOrigen"><option value="">Toda la ropa</option><option value="propias">Compradas</option><option value="regaladas">Regaladas</option><option value="pend">Prestadas (por devolver)</option></select>
+        <button class="btn sec" id="btnLimpiar" style="margin-top:0;padding:12px">Quitar filtros</button>
+      </div>
+    </details>
+    <div class="contador"><span id="contador"></span></div>
+    <div class="grid" id="grid"></div>
+    <div class="vacio" id="vacio" hidden>Todavía no hay prendas.<br>Pulsa <b>Añadir</b> abajo para hacer la primera foto.</div>
+    <div class="vacio" id="sinResultados" hidden>Ninguna prenda coincide con la búsqueda o los filtros.</div>
+        <details class="mas" id="copiaDet" style="margin-top:18px"><summary>Copia de seguridad</summary><div class="dentro">
+      <p class="nota">La copia guarda tus prendas, conjuntos, calendario y sugerencias. Las fotos ya están a salvo en tu Dropbox, no hace falta copiarlas.</p>
+      <button class="btn" id="btnCopiaDropbox">Guardar copia en Dropbox</button>
+      <button class="btn sec" id="btnCopiaDescargar">Descargar copia al móvil</button>
+      <button class="btn sec" id="btnCopiaRestaurar">Restaurar desde un archivo</button>
+      <input type="file" id="fileRestaurar" accept=".json,application/json" hidden>
+      <p class="nota" id="msgCopia" style="margin-top:8px"></p>
+    </div></details>
+    <div class="pie"><button class="linkbtn" id="btnSalir">Desconectar de Dropbox</button></div>
+  </section>
+
+  <!-- Añadir / editar prenda -->
+  <section id="vAnadir" hidden>
+    <h2 id="tituloForm" style="margin:4px 2px 14px;font-size:20px">Añadir prenda</h2>
+
+    <div class="campo">
+      <label>Foto <span class="req">*</span></label>
+      <div class="zona-foto" id="zonaFoto">
+        <div id="foto-vacia"><div class="plus">+</div>Toca para hacer una foto<br>o elegir una de la galería</div>
+        <img id="fotoPrev" alt="" hidden>
+        <input type="file" id="fFile" accept="image/*">
+      </div>
+      <div class="cambiar" id="cambiarFoto" hidden>Toca la foto para cambiarla</div>
+    </div>
+
+    <div class="campo">
+      <label for="fNombre">Nombre <span class="req">*</span></label>
+      <input type="text" id="fNombre" placeholder="Ej.: Camiseta blanca de rayas" autocomplete="off" maxlength="80">
+    </div>
+
+    <div class="campo">
+      <label for="fCategoria">Categoría <span class="req">*</span></label>
+      <select id="fCategoria"></select>
+    </div>
+
+    <details class="mas" id="masDetalles">
+      <summary>Más detalles (opcional)</summary>
+      <div class="dentro">
+        <div class="campo"><span class="etq">Estilo</span><div class="seg" id="segEstilo"></div><p class="nota" style="margin:6px 0 0">Sirve para no mezclar, por ejemplo, una chaqueta arreglada con un chándal.</p></div>
+        <div class="campo"><label for="fTipo">Tipo de prenda</label><input type="text" id="fTipo" placeholder="Ej.: manga larga, bermuda, zapatillas" maxlength="60"></div>
+        <div class="campo">
+          <label for="fTalla">Talla</label>
+          <select id="fTalla2"></select>
+          <input type="text" id="fTallaOtra" placeholder="Escribe la talla" style="margin-top:8px" hidden maxlength="20">
+        </div>
+        <div class="campo"><span class="etq">Color principal</span><div class="colores" id="coloresP"></div><div class="color-nombre" id="nomColorP"></div></div>
+        <div class="campo"><span class="etq">Colores secundarios</span><div class="colores" id="coloresS"></div></div>
+        <div class="campo"><label for="fTemp2">Temporada</label><select id="fTemp2"></select></div>
+        <div class="campo"><span class="etq">Nivel de abrigo</span><div class="seg" id="segAbrigo"></div></div>
+        <div class="campo"><label for="fTejido">Tejido</label><select id="fTejido"></select><input type="text" id="fTejidoOtro" placeholder="Escribe el tejido" maxlength="40" style="margin-top:8px" hidden></div>
+        <div class="campo"><label for="fMarca">Marca</label><select id="fMarca"></select><input type="text" id="fMarcaOtro" placeholder="Escribe la marca" maxlength="40" style="margin-top:8px" hidden autocomplete="off"><p class="nota" id="notaMarca" style="margin:6px 0 0" hidden></p></div>
+        <div class="campo"><span class="etq">¿Cómo le queda?</span><div class="seg" id="segAjuste"></div><p class="nota" style="margin:6px 0 0">Sirve para saber cómo talla cada marca. Se apunta con la talla de Juan de ahora.</p></div>
+        <div class="campo"><span class="etq">Procedencia</span><div class="seg" id="segOrigen"></div>
+          <div id="bloquePrestada" hidden style="margin-top:8px">
+            <select id="fPrestadaDe"></select>
+            <input type="text" id="fPrestadaOtro" placeholder="Nombre de la persona" maxlength="40" style="margin-top:8px" hidden autocomplete="off">
+          </div></div>
+        <div class="campo"><label for="fConjunto">¿Viene en un conjunto?</label><select id="fConjunto"></select>
+          <select id="fConjuntoPieza" style="margin-top:8px" hidden></select>
+          <input type="text" id="fConjuntoOtro" placeholder="Nombre del conjunto, ej.: Chándal azul" maxlength="40" style="margin-top:8px" hidden autocomplete="off">
+          <p class="nota" style="margin:6px 0 0">Para prendas que compraste juntas (sudadera + pantalón de chándal). Cada pieza lleva su foto y se puede usar por separado.</p></div>
+        <div class="campo"><label for="fEstado">Estado</label><select id="fEstado"></select></div>
+        <div class="campo"><span class="etq">Favorita</span><div class="seg"><button type="button" id="btnFavForm">♥ Marcar como favorita</button></div></div>
+      </div>
+    </details>
+
+    <p class="error" id="errForm"></p>
+    <button class="btn" id="btnGuardar">Guardar prenda</button>
+    <button class="btn sec" id="btnGuardarOtra">Guardar y añadir otra pieza del conjunto</button>
+    <button class="btn sec" id="btnCancelar" hidden>Cancelar</button>
+  </section>
+
+  <!-- Crear conjuntos -->
+  <section id="vConjuntos" hidden>
+    <h2 style="margin:4px 2px 6px;font-size:20px">Crear conjuntos</h2>
+    <p class="nota">Solo uso prendas que ya has añadido y fotografiado. Nunca invento ropa.</p>
+    <div class="card" id="cardTiempo">
+      <div class="conj-cab"><span>Tiempo en Cartagena</span><button class="linkbtn" id="btnTiempo">Actualizar</button></div>
+      <div class="seg" id="segDia"></div>
+      <div id="tiempoCuerpo" style="margin-top:12px"></div>
+    </div>
+    <div class="campo"><span class="etq">¿Qué conjunto quieres?</span><div class="seg wrap" id="segModo"></div></div>
+    <div class="campo"><span class="etq">¿Qué tiempo hace?</span><div class="seg wrap" id="segNivel"></div><p class="nota" id="notaNivel" style="margin-top:8px"></p></div>
+    <details class="mas">
+      <summary>Ajustes de Juan (opcional)</summary>
+      <div class="dentro">
+        <p class="nota">Si indicas su talla, no te propondré prendas que le queden muy pequeñas o grandes.</p>
+        <div class="campo"><label for="selUsaCalzado">¿Usa calzado?</label><select id="selUsaCalzado"><option value="no">No, todavía no anda</option><option value="si">Sí, usa calzado</option></select></div>
+        <div class="campo"><label for="fNacimiento">Fecha de nacimiento de Juan</label><input type="date" id="fNacimiento"><p class="nota" id="notaEdad" style="margin:6px 0 0"></p></div>
+        <div class="campo"><label for="selTallaRopa">Talla de ropa</label><select id="selTallaRopa"></select></div>
+        <div class="campo"><label for="selTallaCalzado">Número de calzado</label><select id="selTallaCalzado"></select></div>
+      </div>
+    </details>
+    <button class="btn" id="btnCrear">Crear conjuntos</button>
+    <div id="resultados" style="margin-top:16px"></div>
+  </section>
+
+  <!-- Calendario -->
+  <section id="vCalendario" hidden>
+    <h2 style="margin:4px 2px 10px;font-size:20px">Calendario</h2>
+    <div class="card" style="padding:14px">
+      <div class="cal-cab"><button class="linkbtn" id="calAnt" aria-label="Mes anterior">◀</button><span id="calMes"></span><button class="linkbtn" id="calSig" aria-label="Mes siguiente">▶</button></div>
+      <div class="cal-grid" id="calSem"></div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="card" id="calDia"></div>
+    <div class="card">
+      <div class="conj-cab"><span>Lo que más y menos lleva</span></div>
+      <div class="seg" id="segStats"></div>
+      <div id="calStats" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- Completar mi armario -->
+  <section id="vCompletar" hidden>
+    <h2 style="margin:4px 2px 6px;font-size:20px">Completar mi armario</h2>
+    <div id="completarCuerpo"></div>
+  </section>
+
+  <!-- Favoritos -->
+  <section id="vFavoritos" hidden>
+    <h2 style="margin:4px 2px 10px;font-size:20px">Favoritos</h2>
+    <div class="seg" id="segFav"></div>
+    <div id="favCuerpo" style="margin-top:14px"></div>
+  </section>
+</main>
+
+<nav id="nav" hidden>
+  <button data-tab="armario"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18M9 11v2M15 11v2"/></svg>Armario</button>
+  <button data-tab="anadir"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Añadir</button>
+  <button data-tab="conjuntos"><svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 1 2 2c-1 .5-2 1-2 2v1M3 19l9-6 9 6z"/></svg>Conjuntos</button>
+  <button data-tab="completar"><svg viewBox="0 0 24 24"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg>Completar</button>
+  <button data-tab="calendario"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Calendario</button>
+  <button data-tab="favoritos"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Favoritos</button>
+</nav>
+
+<div class="fondo" id="fondo" hidden><div class="hoja" id="hoja"></div></div>
+<div class="fondo" id="fondo2" hidden><div class="hoja" id="hoja2"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // El App key de Dropbox NO es secreto. No hay ningún secreto en este archivo.
+  var APP_KEY = "2k5vjcyzln5gd96";
+  var REDIRECT_URI = "https://elarmariodejuan.github.io/armario-juan-v2/";
+  var RUTA_INV = "/inventario.json";
+
+  var K_REFRESH = "armario_refresh_token";
+  var K_VERIFIER = "armario_pkce_verifier";
+  var K_STATE = "armario_pkce_state";
+
+  var CATS_BASE = ["Camisetas y partes de arriba", "Bodies", "Pantalones y partes de abajo", "Petos", "Sudaderas", "Jerséis", "Rebecas", "Camisas",
+    "Conjuntos", "Monos", "Abrigos y chaquetas", "Chalecos", "Pijamas", "Calzado", "Calcetines", "Gorros", "Accesorios"];
+  var TALLAS = ["0-3 meses", "3-6 meses", "6-9 meses", "9-12 meses", "12-18 meses", "18-24 meses",
+    "2 años", "3 años", "4 años", "5 años", "6 años", "7 años", "8 años", "9 años", "10 años", "11 años", "12 años",
+    "Calzado 18", "Calzado 19", "Calzado 20", "Calzado 21", "Calzado 22", "Calzado 23", "Calzado 24", "Calzado 25",
+    "Calzado 26", "Calzado 27", "Calzado 28", "Calzado 29", "Calzado 30", "Calzado 31", "Calzado 32", "Calzado 33", "Calzado 34", "Talla única"];
+  // Etiquetas con un solo mes (las venden así algunas tiendas). Cuentan como la talla en la que ese mes es el límite superior:
+  // 12 meses ≈ 9-12, 18 meses ≈ 12-18, 24 meses ≈ 18-24 (coincide con las tablas habituales: 80 cm, 86 cm, 92 cm).
+  var EQUIV = { "3 meses": "0-3 meses", "6 meses": "3-6 meses", "9 meses": "6-9 meses", "12 meses": "9-12 meses", "18 meses": "12-18 meses", "24 meses": "18-24 meses" };
+  // Tallas en centímetros (tablas europeas habituales de ropa infantil). Aproximado: cada marca puede variar un poco.
+  var CM = { "50 cm": "0-3 meses", "56 cm": "0-3 meses", "62 cm": "0-3 meses", "68 cm": "3-6 meses", "74 cm": "6-9 meses", "80 cm": "9-12 meses", "86 cm": "12-18 meses", "92 cm": "18-24 meses",
+    "98 cm": "2 años", "104 cm": "3 años", "110 cm": "4 años", "116 cm": "5 años", "122 cm": "6 años", "128 cm": "7 años", "134 cm": "8 años", "140 cm": "9 años", "146 cm": "10 años", "152 cm": "11 años", "158 cm": "12 años" };
+  Object.keys(CM).forEach(function (k) { EQUIV[k] = CM[k]; });
+  var TALLAS_CM = Object.keys(CM);
+  var TEJIDOS_BASE = ["Algodón", "Algodón orgánico", "Punto", "Punto grueso", "Felpa", "Rizo", "Pana", "Vaquero", "Lana", "Forro polar", "Muselina", "Lino", "Poliéster", "Terciopelo", "Acolchado"];
+  var TALLAS_SUELTAS = ["3 meses", "6 meses", "9 meses", "12 meses", "18 meses", "24 meses"];
+  var TEMPORADAS = ["primavera", "verano", "otoño", "invierno", "todo el año"];
+  var ABRIGOS = ["ligero", "medio", "calentito"];
+  var ESTILOS = [["deportivo", "Cómodo / deportivo"], ["diario", "Diario"], ["arreglado", "Arreglado"]];
+  var NIV_ESTILO = { deportivo: 0, diario: 1, arreglado: 2 };
+  var NOMBRE_ESTILO = { 0: "cómodo / deportivo", 1: "de diario", 2: "arreglado" };
+  var ESTADOS = ["disponible", "guardada", "fuera de temporada", "devuelta"];
+  var AJUSTES = [["grande", "Le queda grande"], ["bien", "Le queda bien"], ["justa", "Le queda justa"]];
+  var ORIGENES = [["propia", "Comprada"], ["regalada_nueva", "Regalada (nueva)"], ["regalada_usada", "Regalada (usada)"], ["prestada", "Prestada (se devuelve)"]];
+  var NOMBRE_ORIGEN = { propia: "Comprada", regalada_nueva: "Regalada (nueva)", regalada_usada: "Regalada (usada)", prestada: "Prestada" };
+  // Las prendas antiguas "prestadas que no se devuelven" cuentan como regaladas (usadas)
+  function origenEf(p) { var o = p.origen || "propia"; if (o === "prestada" && p.devolver === false) return "regalada_usada"; return NOMBRE_ORIGEN[o] ? o : "propia"; }
+  function porDevolver(p) { return origenEf(p) === "prestada" && p.estado !== "devuelta"; }
+  var COLORES = [
+    ["Blanco", "#ffffff"], ["Crudo", "#f1e9da"], ["Beige", "#d9c7a6"], ["Arena", "#c8b08a"], ["Marrón", "#7a5a3f"],
+    ["Negro", "#2b2926"], ["Gris", "#9a9a98"], ["Azul marino", "#26385c"], ["Azul", "#4a72b0"], ["Celeste", "#9cc3e0"],
+    ["Verde salvia", "#8a9a7b"], ["Verde", "#4f8a55"], ["Verde oscuro", "#2f4a35"], ["Amarillo", "#e8cf4f"],
+    ["Mostaza", "#c9992b"], ["Naranja", "#e0833a"], ["Rojo", "#c0453b"], ["Burdeos", "#6e2a36"],
+    ["Rosa", "#e6a9b3"], ["Morado", "#8a6aa8"], ["Multicolor", "conic-gradient(#c0453b,#e8cf4f,#4f8a55,#4a72b0,#8a6aa8,#c0453b)"]
+  ];
+
+  var S = { inv: null, tab: "armario", editId: null, filtros: { texto: "", cat: "", talla: "", color: "", temp: "", fav: "", origen: "" } };
+  var F = null; // estado del formulario
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function norm(s) { return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim(); }
+  function colorHex(n) { for (var i = 0; i < COLORES.length; i++) if (COLORES[i][0] === n) return COLORES[i][1]; return "#ccc"; }
+
+  function guardarLS(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function leerLS(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function borrarLS(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  function guardarSS(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+  function leerSS(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function borrarSS(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $("toast");
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 2800);
+  }
+
+  // ================== OAuth 2.0 con PKCE ==================
+  var accessToken = null, accessExpira = 0, refrescando = null;
+
+  function aleatorio(n) {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    var b = new Uint8Array(n); crypto.getRandomValues(b);
+    var s = ""; for (var i = 0; i < n; i++) s += chars[b[i] % chars.length];
+    return s;
+  }
+  function base64url(buf) {
+    var b = new Uint8Array(buf), s = "";
+    for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  async function desafio(v) {
+    return base64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)));
+  }
+
+  async function iniciarConexion() {
+    if (!window.crypto || !crypto.subtle) {
+      $("msgConexion").textContent = "Este navegador no es compatible. Abre la página desde Safari con la dirección https.";
+      return;
+    }
+    var verifier = aleatorio(64), state = aleatorio(24);
+    guardarSS(K_VERIFIER, verifier); guardarSS(K_STATE, state);
+    var challenge = await desafio(verifier);
+    window.location.href = "https://www.dropbox.com/oauth2/authorize"
+      + "?client_id=" + encodeURIComponent(APP_KEY)
+      + "&response_type=code"
+      + "&code_challenge=" + challenge
+      + "&code_challenge_method=S256"
+      + "&token_access_type=offline"
+      + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI)
+      + "&state=" + encodeURIComponent(state);
+  }
+
+  async function pedirToken(parametros) {
+    var resp = await fetch("https://api.dropboxapi.com/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(parametros).toString()
+    });
+    var datos = await resp.json().catch(function () { return {}; });
+    if (!resp.ok) {
+      var e = new Error(datos.error_description || datos.error || ("Error " + resp.status));
+      e.codigo = datos.error; throw e;
+    }
+    return datos;
+  }
+
+  async function terminarConexion(code, state) {
+    var verifier = leerSS(K_VERIFIER), guardado = leerSS(K_STATE);
+    borrarSS(K_VERIFIER); borrarSS(K_STATE);
+    if (!verifier || !guardado || state !== guardado) {
+      throw new Error("La conexión no se pudo verificar. Vuelve a pulsar «Conectar con Dropbox».");
+    }
+    var d = await pedirToken({ grant_type: "authorization_code", code: code, client_id: APP_KEY, redirect_uri: REDIRECT_URI, code_verifier: verifier });
+    accessToken = d.access_token; accessExpira = Date.now() + (d.expires_in - 120) * 1000;
+    if (d.refresh_token) guardarLS(K_REFRESH, d.refresh_token);
+  }
+
+  async function obtenerToken() {
+    if (accessToken && Date.now() < accessExpira) return accessToken;
+    if (refrescando) return refrescando;
+    var refresh = leerLS(K_REFRESH);
+    if (!refresh) throw new Error("No hay sesión de Dropbox. Pulsa «Conectar con Dropbox».");
+    refrescando = (async function () {
+      try {
+        var d = await pedirToken({ grant_type: "refresh_token", refresh_token: refresh, client_id: APP_KEY });
+        accessToken = d.access_token; accessExpira = Date.now() + (d.expires_in - 120) * 1000;
+        return accessToken;
+      } catch (e) {
+        if (e.codigo === "invalid_grant") borrarLS(K_REFRESH);
+        throw e;
+      } finally { refrescando = null; }
+    })();
+    return refrescando;
+  }
+
+  // ================== Dropbox: archivos ==================
+  async function dbx(url, opts) {
+    opts.headers = opts.headers || {};
+    opts.headers["Authorization"] = "Bearer " + (await obtenerToken());
+    var r = await fetch(url, opts);
+    if (r.status === 401) {
+      accessToken = null;
+      opts.headers["Authorization"] = "Bearer " + (await obtenerToken());
+      r = await fetch(url, opts);
+    }
+    return r;
+  }
+
+  async function subir(ruta, blob) {
+    var r = await dbx("https://content.dropboxapi.com/2/files/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream", "Dropbox-API-Arg": JSON.stringify({ path: ruta, mode: "overwrite", mute: true }) },
+      body: blob
+    });
+    if (!r.ok) throw new Error("No se pudo guardar en Dropbox (" + r.status + ")");
+  }
+
+  async function descargar(ruta) {
+    var r = await dbx("https://content.dropboxapi.com/2/files/download", {
+      method: "POST", headers: { "Dropbox-API-Arg": JSON.stringify({ path: ruta }) }
+    });
+    if (r.status === 409) {
+      var t = await r.text();
+      if (t.indexOf("not_found") >= 0) return null;
+      throw new Error("Dropbox no pudo leer el archivo");
+    }
+    if (!r.ok) throw new Error("No se pudo leer de Dropbox (" + r.status + ")");
+    return r.blob();
+  }
+
+  async function borrarArchivo(ruta) {
+    var r = await dbx("https://api.dropboxapi.com/2/files/delete_v2", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: ruta })
+    });
+    if (!r.ok && r.status !== 409) throw new Error("No se pudo borrar (" + r.status + ")");
+  }
+
+  // ================== Inventario ==================
+  function inventarioNuevo() {
+    return { version: 1, creado: new Date().toISOString(), ajustes: { tallaRopa: "", tallaCalzado: "", usaCalzado: false, nacimiento: "" }, categoriasExtra: [], prendas: [], conjuntos: [], calendario: [], sugerencias: [] };
+  }
+  function normalizarInv(inv) {
+    ["prendas", "conjuntos", "calendario", "sugerencias", "categoriasExtra"].forEach(function (k) { if (!Array.isArray(inv[k])) inv[k] = []; });
+    if (!inv.ajustes || typeof inv.ajustes !== "object") inv.ajustes = {};
+    if (typeof inv.ajustes.tallaRopa !== "string") inv.ajustes.tallaRopa = "";
+    if (typeof inv.ajustes.nacimiento !== "string") inv.ajustes.nacimiento = "";
+    if (typeof inv.ajustes.tallaCalzado !== "string") inv.ajustes.tallaCalzado = "";
+    if (typeof inv.ajustes.usaCalzado !== "boolean") inv.ajustes.usaCalzado = false;
+    return inv;
+  }
+  async function leerInventario() {
+    var b = await descargar(RUTA_INV);
+    if (!b) return inventarioNuevo();
+    return normalizarInv(JSON.parse(await b.text()));
+  }
+
+  // Cada cambio: lee el inventario más reciente de Dropbox, aplica el cambio y lo guarda.
+  // Se hacen de uno en uno para que dos cambios seguidos no se pisen.
+  var colaGuardado = Promise.resolve();
+  function modificarInv(fn) {
+    var tarea = colaGuardado.then(async function () {
+      var inv = await leerInventario();
+      fn(inv);
+      inv.modificado = new Date().toISOString();
+      await subir(RUTA_INV, new Blob([JSON.stringify(inv, null, 1)], { type: "application/octet-stream" }));
+      S.inv = inv;
+      return inv;
+    });
+    colaGuardado = tarea.catch(function () {});
+    return tarea;
+  }
+
+  function todasCategorias() {
+    var extra = (S.inv && S.inv.categoriasExtra) || [];
+    var vistas = CATS_BASE.map(norm);
+    return CATS_BASE.concat(extra.filter(function (c) { var n = norm(c); if (vistas.indexOf(n) >= 0) return false; vistas.push(n); return true; }));
+  }
+
+  // ================== Fotos ==================
+  function cargarImagen(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () { res({ img: img, url: url }); };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error("No se pudo leer la foto. Prueba con otra.")); };
+      img.src = url;
+    });
+  }
+  function aJpeg(img, maxLado, calidad) {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var f = Math.min(1, maxLado / Math.max(w, h));
+    w = Math.max(1, Math.round(w * f)); h = Math.max(1, Math.round(h * f));
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+    return new Promise(function (res, rej) {
+      c.toBlob(function (b) { b ? res(b) : rej(new Error("No se pudo comprimir la foto")); }, "image/jpeg", calidad);
+    });
+  }
+
+  var miniCache = {};
+  var activos = 0, cola = [];
+  function encolar(fn) { cola.push(fn); siguienteCola(); }
+  function siguienteCola() {
+    while (activos < 4 && cola.length) {
+      var f = cola.shift(); activos++;
+      f().catch(function () {}).then(function () { activos--; siguienteCola(); });
+    }
+  }
+  async function urlMini(p) {
+    if (miniCache[p.id]) return miniCache[p.id];
+    var b = await descargar(p.miniatura);
+    if (!b) return null;
+    miniCache[p.id] = URL.createObjectURL(b);
+    return miniCache[p.id];
+  }
+  function olvidarMini(id) { if (miniCache[id]) { URL.revokeObjectURL(miniCache[id]); delete miniCache[id]; } }
+
+  var observador = null;
+  function observarImagenes() {
+    if (observador) observador.disconnect();
+    var imgs = $("grid").querySelectorAll("img[data-mini]");
+    function cargar(img) {
+      var p = S.inv.prendas.find(function (x) { return x.id === img.getAttribute("data-mini"); });
+      if (!p) return;
+      encolar(async function () {
+        var u = await urlMini(p);
+        if (u) { img.src = u; img.classList.add("lista"); }
+      });
+    }
+    if (!("IntersectionObserver" in window)) { imgs.forEach(cargar); return; }
+    observador = new IntersectionObserver(function (entradas) {
+      entradas.forEach(function (e) { if (e.isIntersecting) { observador.unobserve(e.target); cargar(e.target); } });
+    }, { rootMargin: "300px" });
+    imgs.forEach(function (i) { observador.observe(i); });
+  }
+
+  // ================== Navegación ==================
+  function ocultarTodo() {
+    ["vConectar", "vCargando", "vArmario", "vAnadir", "vConjuntos", "vCalendario", "vFavoritos", "vCompletar"].forEach(function (id) { $(id).hidden = true; });
+  }
+  function pantalla(nombre) {
+    ocultarTodo();
+    $("nav").hidden = ["vArmario", "vAnadir", "vConjuntos", "vCalendario", "vFavoritos", "vCompletar"].indexOf(nombre) < 0;
+    $(nombre).hidden = false;
+    window.scrollTo(0, 0);
+  }
+  function marcarTab(tab) {
+    document.querySelectorAll("#nav button").forEach(function (b) { b.classList.toggle("activa", b.getAttribute("data-tab") === tab); });
+  }
+  function irA(tab) {
+    S.tab = tab;
+    if (tab === "armario") { pantalla("vArmario"); renderArmario(); }
+    else if (tab === "anadir") { if (!S.editId) prepararFormulario(null); pantalla("vAnadir"); }
+    else if (tab === "conjuntos") { prepararConjuntos(); pantalla("vConjuntos"); }
+    else if (tab === "calendario") { pantalla("vCalendario"); renderCalendario(); }
+    else if (tab === "favoritos") { pantalla("vFavoritos"); renderFavoritos(); }
+    else if (tab === "completar") { pantalla("vCompletar"); renderCompletar(); }
+    marcarTab(tab);
+  }
+
+  // ================== Mi armario ==================
+  function llenarSelect(sel, primera, valores, actual) {
+    var h = '<option value="">' + esc(primera) + "</option>";
+    valores.forEach(function (v) { h += '<option value="' + esc(v) + '"' + (v === actual ? " selected" : "") + ">" + esc(v) + "</option>"; });
+    sel.innerHTML = h;
+  }
+  function prepararFiltros() {
+    var f = S.filtros, prendas = S.inv.prendas;
+    llenarSelect($("fCat"), "Todas las categorías", todasCategorias(), f.cat);
+    var tallas = []; prendas.forEach(function (p) { if (p.talla && tallas.indexOf(p.talla) < 0) tallas.push(p.talla); });
+    tallas.sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); });
+    llenarSelect($("fTalla"), "Todas las tallas", tallas, f.talla);
+    var colores = COLORES.map(function (c) { return c[0]; });
+    llenarSelect($("fColor"), "Todos los colores", colores, f.color);
+    llenarSelect($("fTemp"), "Todas las temporadas", TEMPORADAS, f.temp);
+    $("fFav").value = f.fav; $("fOrigen").value = f.origen || "";
+  }
+  function filtrar(lista) {
+    var f = S.filtros, t = norm(f.texto);
+    return lista.filter(function (p) {
+      if (t && norm(p.nombre).indexOf(t) < 0 && norm(p.tipo).indexOf(t) < 0 && norm(p.conjunto || "").indexOf(t) < 0 && norm(p.marca || "").indexOf(t) < 0) return false;
+      if (f.cat && p.categoria !== f.cat) return false;
+      if (f.talla && p.talla !== f.talla) return false;
+      if (f.color && p.color !== f.color && (p.colores2 || []).indexOf(f.color) < 0) return false;
+      if (f.temp && p.temporada !== f.temp && p.temporada !== "todo el año") return false;
+      if (f.fav && !p.favorito) return false;
+      if (f.origen === "pend" && !porDevolver(p)) return false;
+      if (f.origen === "regaladas" && origenEf(p).indexOf("regalada") !== 0) return false;
+      if (f.origen === "propias" && origenEf(p) !== "propia") return false;
+      return true;
+    });
+  }
+  function filtrosActivos() {
+    var f = S.filtros, n = 0;
+    ["cat", "talla", "color", "temp", "fav", "origen"].forEach(function (k) { if (f[k]) n++; });
+    return n;
+  }
+  function renderArmario() {
+    var prendas = S.inv.prendas, lista = filtrar(prendas), n = filtrosActivos();
+    $("resumenFiltros").textContent = n ? "Filtros (" + n + " activos)" : "Filtros";
+    $("contador").textContent = lista.length + (lista.length === 1 ? " prenda" : " prendas") + (lista.length !== prendas.length ? " de " + prendas.length : "");
+    $("vacio").hidden = prendas.length > 0;
+    $("sinResultados").hidden = !(prendas.length > 0 && lista.length === 0);
+    $("contador").parentNode.hidden = prendas.length === 0;
+    var g = $("grid"); g.innerHTML = "";
+    lista.forEach(function (p) {
+      var d = document.createElement("div");
+      d.className = "tarjeta"; d.setAttribute("data-id", p.id);
+      d.innerHTML = '<div class="foto"><img alt="" data-mini="' + esc(p.id) + '">'
+        + '<button class="fav' + (p.favorito ? " on" : "") + '" data-fav="' + esc(p.id) + '" aria-label="Favorita">♥</button></div>'
+        + '<div class="info"><div class="nom">' + esc(p.nombre) + '</div><div class="meta">' + esc(p.categoria) + "</div>"
+        + (p.talla ? '<span class="chip">' + esc(p.talla) + "</span>" : '<span class="chip aviso">sin talla</span>') + "</div>";
+      g.appendChild(d);
+    });
+    observarImagenes();
+  }
+
+  async function alternarFav(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; });
+    if (!p) return;
+    var nuevo = !p.favorito;
+    p.favorito = nuevo; renderArmario();
+    if (S.tab === "favoritos") renderFavoritos();
+    try {
+      await modificarInv(function (inv) { var q = inv.prendas.find(function (x) { return x.id === id; }); if (q) q.favorito = nuevo; });
+    } catch (e) {
+      var q = S.inv.prendas.find(function (x) { return x.id === id; });
+      if (q) q.favorito = !nuevo;
+      renderArmario(); if (S.tab === "favoritos") renderFavoritos();
+      toast("No se pudo guardar el favorito");
+    }
+  }
+
+  // ---- Detalle ----
+  var urlGrande = null;
+  function cerrarDetalle() {
+    $("fondo").hidden = true; $("hoja").innerHTML = "";
+    if (urlGrande) { URL.revokeObjectURL(urlGrande); urlGrande = null; }
+  }
+  function abrirDetalle(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; });
+    if (!p) return;
+    var filas = [];
+    function fila(k, v) { if (v) filas.push("<dt>" + k + "</dt><dd>" + v + "</dd>"); }
+    fila("Categoría", esc(p.categoria));
+    fila("Tipo", esc(p.tipo));
+    fila("Talla", p.talla ? esc(p.talla) : '<span class="chip aviso">sin talla</span>');
+    fila("Color", p.color ? '<span class="punto" style="background:' + colorHex(p.color) + '"></span>' + esc(p.color) : "");
+    if ((p.colores2 || []).length) fila("Otros colores", p.colores2.map(function (c) { return '<span class="punto" style="background:' + colorHex(c) + '"></span>' + esc(c); }).join("  "));
+    fila("Temporada", esc(p.temporada));
+    fila("Abrigo", esc(p.abrigo));
+    fila("Estilo", p.estilo ? esc((ESTILOS.filter(function (x) { return x[0] === p.estilo; })[0] || [0, p.estilo])[1]) : "");
+    fila("Tejido", esc(p.tejido));
+    fila("Marca", esc(p.marca));
+    fila("Cómo le queda", p.ajuste ? esc((AJUSTES.filter(function (x) { return x[0] === p.ajuste; })[0] || [0, p.ajuste])[1]) + (p.ajusteTalla ? " <small>(con talla " + esc(p.ajusteTalla) + ")</small>" : "") : "");
+    var oe = origenEf(p);
+    if (oe !== "propia") fila("Procedencia", NOMBRE_ORIGEN[oe] + (p.prestadaDe ? " · de " + esc(p.prestadaDe) : "") + (oe === "prestada" ? (p.estado === "devuelta" ? ' <span class="chip">devuelta</span>' : ' <span class="chip aviso">por devolver</span>') : ""));
+    if (p.conjunto) {
+      var otras = S.inv.prendas.filter(function (x) { return x.id !== p.id && x.conjunto && norm(x.conjunto) === norm(p.conjunto) && x.estado !== "devuelta"; });
+      fila("Conjunto", esc(p.conjunto) + (otras.length
+        ? "<br><small>Con: " + otras.map(function (o) { return '<button class="linkbtn" data-acc="ver" data-id="' + esc(o.id) + '">' + esc(o.nombre) + "</button>"; }).join(" · ") + "</small>"
+        : " <small>(aún no has añadido las otras piezas)</small>"));
+    }
+    fila("Estado", esc(p.estado));
+    $("hoja").innerHTML = '<div class="grande"><img id="imgGrande" alt=""></div>'
+      + "<h3>" + esc(p.nombre) + "</h3>"
+      + '<dl class="ficha">' + filas.join("") + "</dl>"
+      + '<button class="btn sec" data-acc="fav" data-id="' + esc(p.id) + '">' + (p.favorito ? "♥ Quitar de favoritas" : "♡ Marcar como favorita") + "</button>"
+      + (p.conjunto ? '<button class="btn sec" data-acc="favconj" data-id="' + esc(p.id) + '">♡ Guardar el conjunto en favoritos</button>' : "")
+      + (porDevolver(p) ? '<button class="btn sec" data-acc="devuelta" data-id="' + esc(p.id) + '">Marcar como devuelta</button>' : "")
+      + '<button class="btn" data-acc="editar" data-id="' + esc(p.id) + '">Editar</button>'
+      + '<button class="btn peligro" data-acc="eliminar" data-id="' + esc(p.id) + '">Eliminar</button>'
+      + '<button class="btn sec" data-acc="cerrar">Cerrar</button>';
+    $("fondo").hidden = false;
+    descargar(p.foto).then(function (b) {
+      if (!b || $("fondo").hidden) return;
+      urlGrande = URL.createObjectURL(b);
+      var im = $("imgGrande"); if (im) im.src = urlGrande;
+    }).catch(function () { toast("No se pudo cargar la foto grande"); });
+  }
+
+  function guardarConjuntoComprado(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; }); if (!p || !p.conjunto) return;
+    var piezas = S.inv.prendas.filter(function (x) { return x.conjunto && norm(x.conjunto) === norm(p.conjunto) && x.estado !== "devuelta"; });
+    if (piezas.length < 2) { toast("Añade primero las otras piezas del conjunto"); return; }
+    cerrarDetalle();
+    guardarFavorito(piezas.map(function (x) { return x.id; }), p.conjunto);
+  }
+  async function marcarDevuelta(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; }); if (!p) return;
+    if (!confirm("¿Marcar «" + p.nombre + "» como devuelta? Dejará de aparecer en los conjuntos. La foto y los datos se conservan.")) return;
+    try {
+      await modificarInv(function (inv) { var q = inv.prendas.find(function (x) { return x.id === id; }); if (q) { q.estado = "devuelta"; q.devueltaEl = new Date().toISOString(); } });
+      cerrarDetalle(); renderArmario(); toast("Marcada como devuelta");
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+  async function eliminarPrenda(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; });
+    if (!p) return;
+    var nCal = (S.inv.calendario || []).filter(function (e) { return e.prendas.indexOf(id) >= 0; }).length;
+    var nFav = (S.inv.conjuntos || []).filter(function (c) { return c.prendas.indexOf(id) >= 0; }).length;
+    var extra = (nCal || nFav) ? " También se quitará de " + (nCal ? nCal + (nCal === 1 ? " día del calendario" : " días del calendario") : "") + (nCal && nFav ? " y de " : "") + (nFav ? nFav + (nFav === 1 ? " conjunto favorito" : " conjuntos favoritos") : "") + "." : "";
+    if (!confirm("¿Eliminar «" + p.nombre + "»? Se borrará también su foto de Dropbox." + extra)) return;
+    try {
+      await modificarInv(function (inv) {
+        inv.prendas = inv.prendas.filter(function (x) { return x.id !== id; });
+        inv.calendario = inv.calendario.map(function (e) { return Object.assign({}, e, { prendas: e.prendas.filter(function (x) { return x !== id; }) }); })
+          .filter(function (e) { return e.prendas.length > 0; });
+        inv.conjuntos = inv.conjuntos.map(function (c) { return Object.assign({}, c, { prendas: c.prendas.filter(function (x) { return x !== id; }) }); })
+          .filter(function (c) { return c.prendas.length > 0; });
+      });
+      try { await borrarArchivo(p.foto); await borrarArchivo(p.miniatura); } catch (e) { /* la prenda ya no está en el inventario */ }
+      olvidarMini(id);
+      cerrarDetalle(); prepararFiltros(); renderArmario(); toast("Prenda eliminada");
+    } catch (e) { toast("No se pudo eliminar: " + e.message); }
+  }
+
+  // ================== Formulario ==================
+  function nuevoId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function pintarColores(cont, seleccion, multiple) {
+    cont.innerHTML = "";
+    COLORES.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button"; b.title = c[0]; b.setAttribute("data-c", c[0]); b.setAttribute("aria-label", c[0]);
+      b.style.background = c[1];
+      var on = multiple ? seleccion.indexOf(c[0]) >= 0 : seleccion === c[0];
+      if (on) b.classList.add("on");
+      cont.appendChild(b);
+    });
+  }
+  function pintarSeg(cont, valores, actual) {
+    cont.innerHTML = "";
+    valores.forEach(function (v) {
+      var b = document.createElement("button");
+      b.type = "button"; b.setAttribute("data-v", v); b.textContent = v;
+      if (v === actual) b.classList.add("on");
+      cont.appendChild(b);
+    });
+  }
+  function llenarCategoriasForm(sel) {
+    var h = '<option value="">Elige una categoría…</option>';
+    todasCategorias().forEach(function (c) { h += '<option value="' + esc(c) + '"' + (c === sel ? " selected" : "") + ">" + esc(c) + "</option>"; });
+    $("fCategoria").innerHTML = h;
+  }
+
+  var ultimaCategoria = "";
+  function prepararFormulario(p) {
+    S.editId = p ? p.id : null;
+    F = {
+      foto: null,
+      color: p ? (p.color || "") : "",
+      colores2: p ? (p.colores2 || []).slice() : [],
+      abrigo: p ? (p.abrigo || "") : "",
+      estilo: p ? (p.estilo || "") : "",
+      favorito: p ? !!p.favorito : false,
+      ajuste: p ? (p.ajuste || "") : "",
+      origen: p ? origenEf(p) : "propia"
+    };
+    $("tituloForm").textContent = p ? "Editar prenda" : "Añadir prenda";
+    $("btnGuardar").textContent = p ? "Guardar cambios" : "Guardar prenda";
+    $("btnCancelar").hidden = !p; $("btnGuardarOtra").hidden = !!p;
+    $("errForm").textContent = "";
+    $("fFile").value = "";
+    $("fotoPrev").hidden = true; $("fotoPrev").removeAttribute("src");
+    $("foto-vacia").hidden = false; $("cambiarFoto").hidden = true;
+    $("fNombre").value = p ? p.nombre : "";
+    llenarCategoriasForm(p ? p.categoria : ultimaCategoria);
+    $("fTipo").value = p ? (p.tipo || "") : "";
+    var th = '<option value="">Sin indicar</option>';
+    TALLAS.forEach(function (t) {
+      if (t === "2 años") th += '<optgroup label="Si la etiqueta trae centímetros">' + TALLAS_CM.map(function (x) { return '<option value="' + x + '">' + x + "</option>"; }).join("") + "</optgroup>"
+        + '<optgroup label="Si la etiqueta trae un solo mes">' + TALLAS_SUELTAS.map(function (x) { return '<option value="' + x + '">' + x + "</option>"; }).join("") + "</optgroup>";
+      th += '<option value="' + esc(t) + '">' + esc(t) + "</option>";
+    });
+    th += '<option value="__otra">Otra…</option>';
+    $("fTalla2").innerHTML = th;
+    $("fTallaOtra").hidden = true; $("fTallaOtra").value = "";
+    if (p && p.talla) {
+      if (TALLAS.indexOf(p.talla) >= 0 || EQUIV[p.talla]) $("fTalla2").value = p.talla;
+      else { $("fTalla2").value = "__otra"; $("fTallaOtra").hidden = false; $("fTallaOtra").value = p.talla; }
+    }
+    var tp = '<option value="">Sin indicar</option>';
+    TEMPORADAS.forEach(function (t) { tp += '<option value="' + t + '"' + (p && p.temporada === t ? " selected" : "") + ">" + t + "</option>"; });
+    $("fTemp2").innerHTML = tp;
+    var es = ""; ESTADOS.forEach(function (t) { es += '<option value="' + t + '"' + ((p ? p.estado : "disponible") === t ? " selected" : "") + ">" + t + "</option>"; });
+    $("fEstado").innerHTML = es;
+    pintarColores($("coloresP"), F.color, false);
+    pintarColores($("coloresS"), F.colores2, true);
+    $("nomColorP").textContent = F.color;
+    pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
+    pintarPares($("segEstilo"), ESTILOS, F.estilo);
+    pintarListaSel("fMarca", "fMarcaOtro", "marca", [], p ? p.marca : "", "Sin indicar");
+    pintarListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", [], p ? p.prestadaDe : "", "¿De quién? (opcional)");
+    pintarListaSel("fTejido", "fTejidoOtro", "tejido", TEJIDOS_BASE, p ? p.tejido : "", "Sin indicar");
+    pintarListaSel("fConjunto", "fConjuntoOtro", "conjunto", [], p ? p.conjunto : "", "No (prenda suelta)", "➕ Nuevo conjunto…");
+    pintarOpcionPiezaExistente(p);
+    pintarAjusteOrigen(); mostrarNotaMarca();
+    pintarFavForm();
+    $("masDetalles").open = !!p;
+  }
+  // Opción "La otra pieza ya está en mi armario": enlaza esta prenda con otra ya subida
+  function pintarOpcionPiezaExistente(p) {
+    var sel = $("fConjunto"), pie = $("fConjuntoPieza");
+    var op = document.createElement("option"); op.value = "__existente"; op.textContent = "🔗 La otra pieza ya está en mi armario…";
+    sel.insertBefore(op, sel.querySelector('option[value="__otra"]'));
+    var h = '<option value="">Elige la prenda del conjunto…</option>';
+    S.inv.prendas.filter(function (x) { return !p || x.id !== p.id; }).forEach(function (x) {
+      h += '<option value="' + esc(x.id) + '">' + esc(x.nombre + " · " + x.categoria + (x.talla ? " · " + x.talla : "") + (x.conjunto ? " (ya en «" + x.conjunto + "»)" : "")) + "</option>";
+    });
+    pie.innerHTML = h; pie.hidden = true;
+  }
+  function piezaEnlazada() { return $("fConjunto").value === "__existente" ? S.inv.prendas.find(function (x) { return x.id === $("fConjuntoPieza").value; }) : null; }
+  // Desplegable con las opciones ya usadas y "Otra…" para escribir una nueva (que luego aparece en la lista)
+  function listaOpciones(campo, base) {
+    var out = [], vistos = {};
+    (base || []).concat(valoresUsados(campo).slice().sort(function (a, b) { return a.localeCompare(b, "es"); })).forEach(function (v) {
+      var k = norm(v); if (!k || vistos[k]) return; vistos[k] = 1; out.push(v);
+    });
+    return out;
+  }
+  function pintarListaSel(selId, otroId, campo, base, valor, textoVacio, textoOtra) {
+    var lista = listaOpciones(campo, base), sel = $(selId), h = '<option value="">' + esc(textoVacio) + "</option>";
+    lista.forEach(function (v) { h += '<option value="' + esc(v) + '">' + esc(v) + "</option>"; });
+    h += '<option value="__otra">' + esc(textoOtra || "➕ Otra…") + "</option>";
+    sel.innerHTML = h;
+    var hit = valor ? lista.filter(function (v) { return norm(v) === norm(valor); })[0] : "";
+    sel.value = hit || ""; $(otroId).value = ""; $(otroId).hidden = true;
+  }
+  function leerListaSel(selId, otroId, campo, base) {
+    var v = $(selId).value;
+    if (v === "__otra") v = $(otroId).value.trim();
+    if (!v) return "";
+    var ya = listaOpciones(campo, base).filter(function (x) { return norm(x) === norm(v); })[0];
+    return ya || v;
+  }
+  function conectarListaSel(selId, otroId, alCambiar) {
+    $(selId).addEventListener("change", function () {
+      var otra = $(selId).value === "__otra"; $(otroId).hidden = !otra; if (otra) $(otroId).focus();
+      if (alCambiar) alCambiar();
+    });
+    $(otroId).addEventListener("input", function () { if (alCambiar) alCambiar(); });
+  }
+  function pintarAjusteOrigen() {
+    pintarPares($("segAjuste"), AJUSTES, F.ajuste);
+    pintarPares($("segOrigen"), ORIGENES, F.origen);
+    $("bloquePrestada").hidden = F.origen === "propia";
+  }
+  function marcasUsadas() { return valoresUsados("marca"); }
+  function personasUsadas() { return valoresUsados("prestadaDe"); }
+  function valoresUsados(campo) {
+    var cuenta = {};
+    ((S.inv && S.inv.prendas) || []).forEach(function (p) { var v = (p[campo] || "").trim(); if (v) cuenta[v] = (cuenta[v] || 0) + 1; });
+    return Object.keys(cuenta).sort(function (a, b) { return cuenta[b] - cuenta[a]; });
+  }
+  function pintarFavForm() {
+    var b = $("btnFavForm");
+    b.classList.toggle("on", F.favorito);
+    b.textContent = F.favorito ? "♥ Favorita" : "♡ Marcar como favorita";
+  }
+
+  // Si ya hay una marca escrita de otra forma ("zara" / "Zara"), se usa la que ya existía
+  function unificarMarca(m) {
+    if (!m) return "";
+    var ya = marcasUsadas().filter(function (x) { return norm(x) === norm(m); })[0];
+    return ya || m;
+  }
+  // Otra pieza del mismo conjunto: se heredan marca, talla, color, temporada, abrigo, estilo, tejido, procedencia y conjunto
+  function prepararSiguientePieza(d) {
+    var base = Object.assign({}, d, { id: null, nombre: "", categoria: "", tipo: "", ajuste: "", favorito: false });
+    prepararFormulario(base);
+    S.editId = null;
+    $("tituloForm").textContent = "Añadir prenda"; $("btnGuardar").textContent = "Guardar prenda";
+    $("btnCancelar").hidden = true; $("btnGuardarOtra").hidden = false;
+    $("masDetalles").open = true;
+    $("fCategoria").value = "";
+  }
+  async function guardarPrenda(siguiente) {
+    var err = $("errForm"); err.textContent = "";
+    var nombre = $("fNombre").value.trim();
+    var catSel = $("fCategoria").value;
+    var cat = catSel;
+    var editando = S.editId ? S.inv.prendas.find(function (x) { return x.id === S.editId; }) : null;
+    if (!F.foto && !editando) { err.textContent = "Falta la foto."; return; }
+    if (!nombre) { err.textContent = "Falta el nombre."; $("fNombre").focus(); return; }
+    if (!cat) { err.textContent = "Elige una categoría."; return; }
+    var enlazada = piezaEnlazada(), conjunto;
+    if ($("fConjunto").value === "__existente") {
+      if (!enlazada) { $("masDetalles").open = true; err.textContent = "Elige cuál es la otra pieza del conjunto."; return; }
+      var nm = $("fConjuntoOtro").value.trim() || enlazada.conjunto || "";
+      if (!nm) { $("masDetalles").open = true; $("fConjuntoOtro").hidden = false; $("fConjuntoOtro").focus(); err.textContent = "Ponle nombre al conjunto, ej.: Chándal azul."; return; }
+      var ya = valoresUsados("conjunto").filter(function (x) { return norm(x) === norm(nm); })[0];
+      conjunto = ya || nm;
+    } else conjunto = leerListaSel("fConjunto", "fConjuntoOtro", "conjunto", []);
+    if (siguiente && !conjunto) {
+      $("masDetalles").open = true; $("fConjunto").value = "__otra"; $("fConjuntoOtro").hidden = false; $("fConjuntoOtro").focus();
+      err.textContent = "Para añadir otra pieza, elige o escribe el nombre del conjunto (campo «¿Viene en un conjunto?»).";
+      return;
+    }
+
+    var talla = $("fTalla2").value === "__otra" ? $("fTallaOtra").value.trim() : $("fTalla2").value;
+    var btn = $("btnGuardar"), textoBtn = btn.textContent;
+    btn.disabled = true; btn.textContent = "Guardando…";
+    try {
+      var id = editando ? editando.id : nuevoId();
+      var rutaFoto = "/fotos/" + id + ".jpg", rutaMini = "/fotos/mini/" + id + ".jpg";
+      if (F.foto) {
+        btn.textContent = "Comprimiendo foto…";
+        var c = await cargarImagen(F.foto), grande, mini;
+        try { grande = await aJpeg(c.img, 1000, 0.8); mini = await aJpeg(c.img, 400, 0.75); }
+        finally { URL.revokeObjectURL(c.url); }
+        btn.textContent = "Subiendo a Dropbox…";
+        await subir(rutaFoto, grande);
+        await subir(rutaMini, mini);
+        olvidarMini(id);
+      }
+      btn.textContent = "Guardando datos…";
+      var ahora = new Date().toISOString();
+      var datos = {
+        nombre: nombre, categoria: cat, tipo: $("fTipo").value.trim(), talla: talla,
+        color: F.color, colores2: F.colores2.filter(function (x) { return x !== F.color; }),
+        temporada: $("fTemp2").value, abrigo: F.abrigo, estilo: F.estilo, tejido: leerListaSel("fTejido", "fTejidoOtro", "tejido", TEJIDOS_BASE),
+        estado: $("fEstado").value || "disponible", favorito: F.favorito,
+        marca: leerListaSel("fMarca", "fMarcaOtro", "marca", []), ajuste: F.ajuste, origen: F.origen,
+        prestadaDe: F.origen !== "propia" ? leerListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", []) : "",
+        devolver: F.origen === "prestada",
+        conjunto: conjunto
+      };
+      // El ajuste se apunta con la talla de Juan de ese momento; solo se actualiza si lo cambias
+      if (F.ajuste !== (editando ? (editando.ajuste || "") : "")) datos.ajusteTalla = F.ajuste ? tallaRopaEf(S.inv.ajustes) : "";
+      await modificarInv(function (inv) {
+        var existe = CATS_BASE.concat(inv.categoriasExtra).some(function (x) { return norm(x) === norm(cat); });
+        if (!existe) inv.categoriasExtra.push(cat);
+        var i = inv.prendas.findIndex(function (x) { return x.id === id; });
+        if (i >= 0) inv.prendas[i] = Object.assign({}, inv.prendas[i], datos, { modificada: ahora });
+        else inv.prendas.unshift(Object.assign({ id: id, foto: rutaFoto, miniatura: rutaMini, creada: ahora }, datos));
+        if (enlazada) {
+          var j = inv.prendas.findIndex(function (x) { return x.id === enlazada.id; });
+          if (j >= 0) inv.prendas[j] = Object.assign({}, inv.prendas[j], { conjunto: conjunto, modificada: ahora });
+        }
+      });
+      // Si escribió una categoría igual a otra ya existente (con otra forma de escribirla), se usa la existente
+      var vuelve = !!editando;
+      ultimaCategoria = cat;
+      S.editId = null;
+      prepararFiltros();
+      if (vuelve) { irA("armario"); toast("Cambios guardados ✓"); }
+      else if (siguiente) { prepararSiguientePieza(datos); window.scrollTo(0, 0); toast("Guardada ✓ Ahora la otra pieza de «" + conjunto + "»"); }
+      else { prepararFormulario(null); window.scrollTo(0, 0); toast("Prenda guardada ✓ Puedes añadir otra"); }
+    } catch (e) {
+      err.textContent = "No se pudo guardar: " + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = S.editId ? "Guardar cambios" : "Guardar prenda";
+      if (btn.textContent === "Guardando…") btn.textContent = textoBtn;
+    }
+  }
+
+  // ================== Estilista (Fase 3) ==================
+  // La "base" de arriba es siempre camiseta, body o camisa. Sudaderas y jerséis van ENCIMA (como capa), nunca solos.
+  var CAT_ARRIBA = ["Camisetas y partes de arriba", "Bodies", "Camisas"];
+  var CAT_ABAJO = ["Pantalones y partes de abajo", "Petos"];
+  var CAT_UNO = ["Conjuntos", "Monos", "Vestidos"];
+  var CAT_CAPA = ["Abrigos y chaquetas", "Chalecos", "Rebecas", "Sudaderas", "Jerséis"];
+  var CAT_CALZADO = ["Calzado"];
+  var CAT_CALCETIN = ["Calcetines"];
+  var CAT_GORRO = ["Gorros"];
+  var CAT_ACC = ["Accesorios"];
+  var CAT_COMPLEMENTO = ["Accesorios", "Gorros", "Calcetines"];
+  var MODOS = [["hoy", "Para hoy"], ["paseo", "Para pasear"], ["arreglado", "Más arreglado"], ["diario", "Cómodo diario"], ["frio", "Días fríos"], ["calor", "Días calurosos"]];
+  var NIVELES = [["auto", "Automático (según el tiempo)"], ["1", "Calor"], ["2", "Templado"], ["3", "Fresco"], ["4", "Frío"]];
+  var NIVEL_NOMBRE = { 1: "calor", 2: "templado", 3: "fresco", 4: "frío" };
+  var NIVEL_AUTO = { verano: 1, primavera: 2, "otoño": 3, invierno: 4 };
+  var NEUTROS = ["Blanco", "Crudo", "Beige", "Arena", "Gris", "Negro", "Azul marino"];
+  var AMIGOS = {
+    "Marrón": ["Blanco", "Crudo", "Beige", "Arena", "Verde salvia", "Mostaza", "Celeste", "Verde oscuro", "Azul", "Naranja", "Amarillo"],
+    "Verde salvia": ["Blanco", "Crudo", "Beige", "Arena", "Marrón", "Azul marino", "Rosa", "Gris", "Celeste", "Mostaza"],
+    "Verde oscuro": ["Beige", "Crudo", "Blanco", "Mostaza", "Marrón", "Arena", "Gris"],
+    "Verde": ["Blanco", "Crudo", "Beige", "Azul marino", "Marrón", "Arena"],
+    "Azul": ["Blanco", "Crudo", "Beige", "Arena", "Gris", "Marrón", "Azul marino", "Celeste", "Amarillo", "Mostaza"],
+    "Celeste": ["Blanco", "Crudo", "Beige", "Azul marino", "Gris", "Marrón", "Rosa", "Verde salvia", "Arena", "Azul"],
+    "Amarillo": ["Azul marino", "Blanco", "Crudo", "Gris", "Azul", "Beige", "Marrón"],
+    "Mostaza": ["Azul marino", "Marrón", "Beige", "Crudo", "Gris", "Verde oscuro", "Blanco", "Verde salvia", "Azul"],
+    "Naranja": ["Azul marino", "Blanco", "Crudo", "Beige", "Marrón", "Azul"],
+    "Rojo": ["Azul marino", "Blanco", "Crudo", "Gris", "Beige"],
+    "Burdeos": ["Beige", "Crudo", "Gris", "Azul marino", "Blanco", "Arena", "Rosa"],
+    "Rosa": ["Blanco", "Crudo", "Gris", "Azul marino", "Beige", "Celeste", "Verde salvia", "Burdeos"],
+    "Morado": ["Blanco", "Crudo", "Gris", "Beige", "Azul marino"]
+  };
+  var MALOS_NEUTROS = { "Negro|Marrón": 0.45, "Negro|Azul marino": 0.5, "Azul marino|Marrón": 0.6 };
+  // Cuánto encaja cada temporada de la prenda con cada nivel de tiempo (0 = se descarta)
+  var SC = {
+    1: { verano: 1, primavera: 0.6, "otoño": 0.25, invierno: 0 },
+    2: { primavera: 1, "otoño": 1, verano: 0.5, invierno: 0.2 },
+    3: { "otoño": 1, primavera: 0.8, invierno: 0.7, verano: 0 },
+    4: { invierno: 1, "otoño": 0.6, primavera: 0.15, verano: 0 }
+  };
+  var C = { modo: "hoy", nivel: "auto", dia: 0, resultados: [], vistos: {} };
+
+  function temporadaActual(d) {
+    var m = d.getMonth();
+    if (m <= 1 || m === 11) return "invierno";
+    if (m <= 4) return "primavera";
+    if (m <= 7) return "verano";
+    return "otoño";
+  }
+  function dos(n) { return (n < 10 ? "0" : "") + n; }
+  // Fecha del dispositivo (AAAA-MM-DD), con un desplazamiento en días (0 = hoy, 1 = mañana)
+  function fechaHoy(off) {
+    var d = new Date();
+    d.setDate(d.getDate() + (off || 0));
+    return d.getFullYear() + "-" + dos(d.getMonth() + 1) + "-" + dos(d.getDate());
+  }
+  function sc(p, nivel) {
+    var s = p.temporada;
+    if (!s) return 0.8;
+    if (s === "todo el año") return 1;
+    var v = SC[nivel][s];
+    return v === undefined ? 0.8 : v;
+  }
+  function calidez(p) {
+    var a = { ligero: 1, medio: 2, calentito: 3 }[p.abrigo];
+    if (a) return a;
+    var d = { "Camisetas y partes de arriba": 1, "Camisas": 1, "Jerséis": 2, "Sudaderas": 2, "Chalecos": 1.5, "Abrigos y chaquetas": 2.5,
+      "Pantalones y partes de abajo": 1.5, "Conjuntos": 1.5, "Monos": 1.5, "Vestidos": 1, "Bodies": 1, "Petos": 1.5, "Rebecas": 2 }[p.categoria];
+    return d || 1.5;
+  }
+  function textoPrenda(p) { return norm((p.nombre || "") + " " + (p.tipo || "") + " " + (p.tejido || "")); }
+  // Si el nombre dice chaqueta/abrigo/chaleco/rebeca, cuenta como capa aunque esté guardada como "parte de arriba".
+  // "Camisa vaquera" NO es una capa: sigue siendo parte de arriba.
+  function catEf(p) {
+    var c = p.categoria;
+    if (c !== "Camisetas y partes de arriba" && c !== "Camisas") return c;
+    var t = textoPrenda(p);
+    if (/\bcamisa\b|\bcamiseta\b|\bbody\b/.test(t)) return c;
+    if (/\bchaleco/.test(t)) return "Chalecos";
+    if (/\brebeca/.test(t)) return "Rebecas";
+    if (/\b(chaqueta|cazadora|chubasquero|parka|anorak|gabardina|abrigo|plumifero|plumas|bomber|blazer|americana)/.test(t)) return "Abrigos y chaquetas";
+    return c;
+  }
+  // Capa "gruesa" = abrigo de verdad (anorak, parka, plumífero, chaquetón, abrigo). Las vaqueras no cuentan.
+  function esCapaGruesa(c) {
+    if (/vaquer|denim|tejan|\bjeans?\b/.test(textoPrenda(c))) return false;
+    return c.abrigo === "calentito" || /\b(parka|anorak|plumifero|plumas|plumon|chaqueton|abrigo|gabardina|trenca|cazadora forrada)/.test(textoPrenda(c));
+  }
+  // Sobre una sudadera (o un jersey grueso) solo va un abrigo grueso; una chaqueta fina quedaría ajustada y abultada.
+  function capaValidaSobre(a, c) {
+    if (!a || !c) return true;
+    var catA = catEf(a);
+    var abultado = catA === "Sudaderas" || (catA === "Jerséis" && a.abrigo === "calentito");
+    return !abultado || esCapaGruesa(c);
+  }
+  function esVaquera(p) { return /vaquer|denim|tejan|\bjeans?\b/.test(textoPrenda(p)); }
+  function esEstampada(p) { return /rayas|estampad|cuadros|lunares|flores|dibujo|print|vichy|tartan/.test(textoPrenda(p)); }
+
+  function colorPar(a, b) {
+    if (!a || !b) return 0.65;
+    if (a === "Multicolor" || b === "Multicolor") {
+      if (a === b) return 0.3;
+      var o = a === "Multicolor" ? b : a;
+      return NEUTROS.indexOf(o) >= 0 ? 0.9 : 0.3;
+    }
+    if (a === b) return 0.85;
+    var na = NEUTROS.indexOf(a) >= 0, nb = NEUTROS.indexOf(b) >= 0;
+    if (na && nb) return MALOS_NEUTROS[a + "|" + b] || MALOS_NEUTROS[b + "|" + a] || 0.92;
+    if (na || nb) {
+      var col = na ? b : a, neu = na ? a : b;
+      var malo = MALOS_NEUTROS[neu + "|" + col] || MALOS_NEUTROS[col + "|" + neu];
+      if (malo) return malo;
+      return (AMIGOS[col] || []).indexOf(neu) >= 0 ? 0.95 : 0.75;
+    }
+    return ((AMIGOS[a] || []).indexOf(b) >= 0 || (AMIGOS[b] || []).indexOf(a) >= 0) ? 0.9 : 0.3;
+  }
+
+  // Edad de Juan y talla que le corresponde por edad
+  function mesesDe(nac) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(nac || ""); if (!m) return null;
+    var hoy = new Date(), meses = (hoy.getFullYear() - +m[1]) * 12 + (hoy.getMonth() + 1 - +m[2]);
+    if (hoy.getDate() < +m[3]) meses--;
+    return meses >= 0 && meses < 12 * 13 ? meses : null;
+  }
+  function textoEdad(meses) {
+    if (meses < 24) return meses + (meses === 1 ? " mes" : " meses");
+    var a = Math.floor(meses / 12), r = meses % 12;
+    return a + (a === 1 ? " año" : " años") + (r ? " y " + r + (r === 1 ? " mes" : " meses") : "");
+  }
+  function tallaPorMeses(m) {
+    var r = [[3, "0-3 meses"], [6, "3-6 meses"], [9, "6-9 meses"], [12, "9-12 meses"], [18, "12-18 meses"], [24, "18-24 meses"]];
+    for (var i = 0; i < r.length; i++) if (m < r[i][0]) return r[i][1];
+    return Math.min(12, Math.max(2, Math.floor(m / 12))) + " años";
+  }
+  // Talla de ropa de Juan: la que hayas elegido a mano o, si no, la que le toca por su edad
+  function tallaRopaEf(aj) {
+    if (!aj) return "";
+    if (aj.tallaRopa) return aj.tallaRopa;
+    var m = mesesDe(aj.nacimiento);
+    return m === null ? "" : tallaPorMeses(m);
+  }
+  function num(t) { var m = String(t || "").match(/\d+/); return m ? parseInt(m[0], 10) : NaN; }
+  function idxRopa(t) {
+    t = EQUIV[t] || t;
+    var i = TALLAS.indexOf(t);
+    return (i < 0 || /^Calzado/.test(t) || t === "Talla única") ? -1 : i;
+  }
+  function tallaValida(p, aj) {
+    if (!p.talla || CAT_COMPLEMENTO.indexOf(p.categoria) >= 0) return true;
+    if (p.categoria === "Calzado") {
+      var ref = num(aj.tallaCalzado), n = num(p.talla);
+      if (isNaN(ref) || isNaN(n)) return true;
+      return n === ref || n === ref + 1;
+    }
+    var r = idxRopa(tallaRopaEf(aj)), i = idxRopa(p.talla);
+    if (r < 0 || i < 0) return true;
+    return Math.abs(i - r) <= 1;
+  }
+  function compatTallas(ps) {
+    var ix = ps.map(function (p) { return p.talla ? idxRopa(p.talla) : -1; }).filter(function (i) { return i >= 0; });
+    if (ix.length < 2) return true;
+    return Math.max.apply(null, ix) - Math.min.apply(null, ix) <= 1;
+  }
+
+  function historial(inv, hoy) {
+    var ultimo = {}, cnt = {}, conjuntos = [];
+    var hoyMs = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    (inv.calendario || []).forEach(function (e) {
+      if (!e.fecha || !Array.isArray(e.prendas)) return;
+      var f = e.fecha.split("-").map(Number);
+      var dias = Math.round((hoyMs - Date.UTC(f[0], f[1] - 1, f[2])) / 86400000);
+      if (isNaN(dias) || dias < 0) return;
+      conjuntos.push({ dias: dias, ids: e.prendas });
+      e.prendas.forEach(function (id) {
+        if (ultimo[id] === undefined || dias < ultimo[id]) ultimo[id] = dias;
+        if (dias <= 30) cnt[id] = (cnt[id] || 0) + 1;
+      });
+    });
+    return { ultimo: ultimo, cnt: cnt, conjuntos: conjuntos, hayHistorial: conjuntos.length > 0 };
+  }
+  function novedad(p, h) {
+    var u = h.ultimo[p.id];
+    if (u === undefined) return 1;
+    return Math.min(1, u / 14) * (1 - Math.min(0.5, (h.cnt[p.id] || 0) / 10));
+  }
+  // Estilo de una prenda: 0 = cómodo/deportivo, 1 = diario, 2 = arreglado.
+  // Si no se ha indicado, se deduce de la categoría y de palabras del nombre.
+  function estiloDe(p) {
+    if (NIV_ESTILO[p.estilo] !== undefined) return NIV_ESTILO[p.estilo];
+    var t = textoPrenda(p);
+    if (p.categoria === "Sudaderas" || /chandal|deportiv|jogger|sudadera|pijama|running|futbol/.test(t)) return 0;
+    if (p.categoria === "Camisas" || p.categoria === "Chalecos" || /vestir|polo|blazer|americana|mocasin|zapato|chino|lino|elegante|arreglad/.test(t)) return 2;
+    return 1;
+  }
+  function afinidad(p, modo) {
+    var tabla = { arreglado: [0.1, 0.5, 1], diario: [0.9, 1, 0.2], paseo: [0.8, 1, 0.4] }[modo];
+    return tabla ? tabla[estiloDe(p)] : 0.5;
+  }
+  function puntuarPieza(p, ctx) {
+    return 0.5 * sc(p, ctx.nivel) + 0.3 * novedad(p, ctx.h) + 0.2 * afinidad(p, ctx.modo) + (p.favorito ? 0.05 : 0);
+  }
+
+  function mismoConjunto(a, b) { return !!(a && b && a.conjunto && b.conjunto && norm(a.conjunto) === norm(b.conjunto)); }
+  function paresDe(it) {
+    var A = it.arriba || it.uno, B = it.abajo, pares = [];
+    if (it.arriba && it.abajo) pares.push([it.arriba, it.abajo, 3]);
+    if (it.capa) { pares.push([it.capa, A, 1.5]); if (B) pares.push([it.capa, B, 1]); }
+    if (it.capa2) { pares.push([it.capa2, it.capa || A, 1.5]); if (B) pares.push([it.capa2, B, 1]); }
+    if (it.calzado) { pares.push([it.calzado, B || A, 1]); if (B) pares.push([it.calzado, A, 0.5]); }
+    return pares;
+  }
+  function piezasDe(it) { return [it.arriba, it.abajo, it.uno, it.capa, it.capa2, it.calzado, it.calcetin, it.gorro, it.acc].filter(Boolean); }
+  function esComplemento(p) { return CAT_COMPLEMENTO.indexOf(p.categoria) >= 0; }
+  // Elige el complemento (calcetines, gorro, accesorio) cuyo color mejor combina con las prendas de referencia
+  function mejorComplemento(lista, refs, h, minimo) {
+    var mejor = null, rs = refs.filter(Boolean);
+    lista.forEach(function (a) {
+      var base = rs.length ? rs.reduce(function (s, r) { return s + colorPar(a.color, r.color); }, 0) / rs.length : 0.8;
+      var s = base + 0.3 * novedad(a, h) + (a.favorito ? 0.05 : 0);
+      if (base >= minimo && (!mejor || s > mejor.s)) mejor = { a: a, s: s };
+    });
+    return mejor ? mejor.a : null;
+  }
+  function claveIds(ids) { return ids.slice().sort().join("|"); }
+
+  function evaluar(it, ctx) {
+    var piezas = piezasDe(it);
+    if (!compatTallas(piezas.filter(function (p) { return p.categoria !== "Calzado" && p.categoria !== "Accesorios"; }))) return null;
+    // Estilo: nunca se mezcla algo arreglado con algo deportivo
+    var ropaEst = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(Boolean).map(estiloDe);
+    var maxEst = Math.max.apply(null, ropaEst);
+    if (maxEst - Math.min.apply(null, ropaEst) >= 2) { ctx.rechEstilo++; return null; }
+    // Nunca dos prendas vaqueras juntas (vaquero con chaqueta vaquera)
+    if ([it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(function (p) { return p && esVaquera(p); }).length >= 2) { ctx.rechVaquero++; return null; }
+    var penEstilo = (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) ? 0.12 : 0;
+    var pares = paresDe(it), sw = 0, ss = 0;
+    pares.forEach(function (x) { sw += x[2]; ss += x[2] * (mismoConjunto(x[0], x[1]) ? 1 : colorPar(x[0].color, x[1].color)); });
+    var hayConjunto = pares.some(function (x) { return mismoConjunto(x[0], x[1]); });
+    var color = pares.length ? ss / sw : 0.9;
+    var vivos = {};
+    piezas.forEach(function (p) { if (p.color && NEUTROS.indexOf(p.color) < 0) vivos[p.color] = 1; });
+    var nv = Object.keys(vivos).length;
+    if (nv > 3) color *= 0.7; else if (nv > 2) color *= 0.85;
+    var estamp = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(function (p) { return p && esEstampada(p); }).length;
+    if (estamp >= 2) color *= 0.8;
+
+    var nivel = ctx.nivel;
+    var temporada = piezas.reduce(function (s, p) { return s + sc(p, nivel); }, 0) / piezas.length;
+    var alto = (it.arriba ? calidez(it.arriba) : calidez(it.uno)) + (it.capa || it.capa2 ? Math.max(it.capa ? calidez(it.capa) : 0, it.capa2 ? calidez(it.capa2) : 0) + (it.capa && it.capa2 ? 0.5 : 0) : 0);
+    var scAlto = 1 - Math.min(1, Math.abs(alto - nivel) / 2.5);
+    var termico = scAlto;
+    if (it.abajo) {
+      var objAbajo = [0, 1, 1.5, 2, 2.5][nivel];
+      termico = 0.75 * scAlto + 0.25 * (1 - Math.min(1, Math.abs(calidez(it.abajo) - objAbajo) / 2));
+    }
+    var nov = piezas.reduce(function (s, p) { return s + novedad(p, ctx.h); }, 0) / piezas.length;
+    var afin = piezas.reduce(function (s, p) { return s + afinidad(p, ctx.modo); }, 0) / piezas.length;
+    var fav = piezas.filter(function (p) { return p.favorito; }).length / piezas.length;
+
+    var score = 0.34 * color + 0.18 * temporada + 0.16 * termico + 0.2 * nov + 0.07 * afin + 0.05 * fav;
+    if (hayConjunto) score += 0.06;   // piezas compradas juntas: están hechas para combinar
+    var ids = piezas.map(function (p) { return p.id; });
+    var clave = claveIds(ids), pen = penEstilo;
+    ctx.h.conjuntos.forEach(function (c) { if (c.dias <= 14 && claveIds(c.ids) === clave) pen += 0.5; });
+    var recientes = piezas.filter(function (p) { return ctx.h.ultimo[p.id] !== undefined && ctx.h.ultimo[p.id] <= 2; }).length;
+    pen += Math.min(0.3, recientes * 0.1);
+    if (C.vistos[clave]) pen += 0.15;
+    if (ctx.capaExtra && it.capa && nivel >= 2) pen -= 0.06; // lluvia o viento: mejor llevar capa
+    return { it: it, ids: ids, score: score - pen + Math.random() * 0.03, nivel: nivel };
+  }
+
+  function nombresLista(ps) { return ps.map(function (p) { return "«" + p.nombre + "»"; }).join(", "); }
+
+  function explicar(o, ctx) {
+    var it = o.it, piezas = piezasDe(it), razones = [], avisos = [];
+    var cols = [];
+    piezas.forEach(function (p) { if (p.color && cols.indexOf(p.color) < 0) cols.push(p.color); });
+    var peor = null;
+    var porConj = {};
+    piezas.forEach(function (p) { if (p.conjunto) { var k = norm(p.conjunto); (porConj[k] = porConj[k] || []).push(p); } });
+    Object.keys(porConj).forEach(function (k) { if (porConj[k].length > 1) razones.push("Van juntas porque son del mismo conjunto («" + porConj[k][0].conjunto + "»)."); });
+    paresDe(it).forEach(function (x) {
+      if (mismoConjunto(x[0], x[1])) return;
+      if (x[0].color && x[1].color) {
+        var s = colorPar(x[0].color, x[1].color);
+        if (!peor || s < peor.s) peor = { s: s, a: x[0].color, b: x[1].color };
+      }
+    });
+    if (peor && peor.s < 0.5) avisos.push("Los colores «" + peor.a + "» y «" + peor.b + "» podrían no combinar del todo.");
+    else if (cols.length) razones.push("Colores que combinan bien: " + cols.join(", ") + ".");
+    var estamp = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(function (p) { return p && esEstampada(p); });
+    if (estamp.length >= 2) avisos.push("Hay dos prendas con estampado o rayas (" + nombresLista(estamp) + "): puede quedar recargado.");
+    var sinColor = piezas.filter(function (p) { return !p.color; });
+    if (sinColor.length) avisos.push("Sin color indicado en " + nombresLista(sinColor) + ": no he podido comprobar del todo si combinan.");
+    var sinTalla = piezas.filter(function (p) { return !p.talla && !esComplemento(p); });
+    if (sinTalla.length) avisos.push("Sin talla en " + nombresLista(sinTalla) + ": no he podido comprobar la talla.");
+    razones.push("Abrigo pensado para un día " + NIVEL_NOMBRE[o.nivel] + (it.capa2 ? ", con sudadera o jersey debajo del abrigo" : it.capa ? ", con una capa extra para el fresco" : "") + ".");
+    if (ctx.h.hayHistorial) {
+      var nunca = piezas.filter(function (p) { return ctx.h.ultimo[p.id] === undefined; });
+      var viejas = piezas.filter(function (p) { return ctx.h.ultimo[p.id] !== undefined && ctx.h.ultimo[p.id] >= 14; });
+      if (nunca.length) razones.push("Incluye prendas que aún no ha llevado: " + nombresLista(nunca.slice(0, 2)) + ".");
+      if (viejas.length) razones.push("«" + viejas[0].nombre + "» lleva " + ctx.h.ultimo[viejas[0].id] + " días sin usarse.");
+    }
+    var ropaEst = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(Boolean).map(estiloDe);
+    var maxEst = Math.max.apply(null, ropaEst), minEst = Math.min.apply(null, ropaEst);
+    razones.push("Estilo coherente: conjunto " + NOMBRE_ESTILO[maxEst === minEst ? maxEst : 1] + ".");
+    if (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) avisos.push("«" + it.calzado.nombre + "» es de un estilo muy distinto al resto de la ropa.");
+    if (piezas.some(function (p) { return p.favorito; })) razones.push("Incluye una prenda favorita.");
+    if (!it.calzado && ctx.usaCalzado) avisos.push("Falta calzado: no hay calzado disponible adecuado para este tiempo y talla (o todavía no has añadido ninguno).");
+    return { razones: razones, avisos: avisos };
+  }
+
+  function etiquetaScore(s) { return s >= 0.8 ? "Muy buena combinación" : s >= 0.65 ? "Buena combinación" : "Combinación aceptable"; }
+
+  function generarConjuntos() {
+    var inv = S.inv, hoy = new Date(), aj = inv.ajustes || {};
+    var nivel, fuente;
+    if (C.modo === "frio") { nivel = 4; fuente = "modo"; }
+    else if (C.modo === "calor") { nivel = 1; fuente = "modo"; }
+    else if (C.nivel !== "auto") { nivel = parseInt(C.nivel, 10); fuente = "manual"; }
+    else { var au = nivelAutoActual(); nivel = au.nivel; fuente = au.fuente; }
+    var rT = resumenTiempo(C.dia);
+    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0, usaCalzado: !!aj.usaCalzado,
+      capaExtra: !!(rT && (rT.probLluvia >= 50 || rT.vientoMax >= 30)) };
+    var disp = inv.prendas.filter(function (p) {
+      var ropa = p.categoria !== "Calzado" && p.categoria !== "Accesorios";
+      return (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, aj) && !(nivel === 1 && p.abrigo === "calentito")
+        && !(C.modo === "arreglado" && ropa && estiloDe(p) === 0);
+    }).map(function (p) { var ef = catEf(p); return ef === p.categoria ? p : Object.assign({}, p, { categoria: ef }); });
+    function de(cats) { return disp.filter(function (p) { return cats.indexOf(p.categoria) >= 0; }); }
+    function mejores(lista, n) {
+      return lista.map(function (p) { return { p: p, s: puntuarPieza(p, ctx) + Math.random() * 0.05 }; })
+        .sort(function (a, b) { return b.s - a.s; }).slice(0, n).map(function (x) { return x.p; });
+    }
+    var arribas = mejores(de(CAT_ARRIBA), 10), abajos = mejores(de(CAT_ABAJO), 10), unos = mejores(de(CAT_UNO), 8);
+    var zapatos = aj.usaCalzado ? mejores(de(CAT_CALZADO), 8) : [], capas = nivel > 1 ? mejores(de(CAT_CAPA), 10) : [];
+    function complementos(cats) { return de(cats).filter(function (p) { return sc(p, nivel) >= 0.7; }); }
+    var accesorios = complementos(CAT_ACC), calcetines = complementos(CAT_CALCETIN), gorros = complementos(CAT_GORRO);
+
+    var bases = [];
+    arribas.forEach(function (a) { abajos.forEach(function (b) { bases.push({ arriba: a, abajo: b }); }); });
+    unos.forEach(function (u) { bases.push({ uno: u }); });
+
+    var cand = [];
+    bases.forEach(function (base) {
+      var capasOk = [[null, null]];
+      capas.forEach(function (c) {
+        if (base.arriba && base.arriba.id === c.id) return;
+        capasOk.push([c, null]);
+        // Sobre una sudadera o un jersey no va nada, salvo un abrigo grueso cuando hace mucho frío.
+        if (nivel === 4 && (c.categoria === "Sudaderas" || c.categoria === "Jerséis")) {
+          capas.forEach(function (g) { if (g.id !== c.id && g.categoria === "Abrigos y chaquetas" && esCapaGruesa(g)) capasOk.push([c, g]); });
+        }
+      });
+      capasOk.forEach(function (par) {
+        var capa = par[0], capa2 = par[1];
+        (zapatos.length ? zapatos : [null]).forEach(function (z) {
+          var ev = evaluar({ arriba: base.arriba || null, abajo: base.abajo || null, uno: base.uno || null, capa: capa, capa2: capa2, calzado: z, acc: null }, ctx);
+          if (ev) cand.push(ev);
+        });
+      });
+    });
+
+    if (!cand.length) {
+      var falta = [];
+      if (!unos.length) {
+        if (!arribas.length) falta.push("una prenda base de arriba (camiseta, body o camisa; la sudadera y el jersey van encima)");
+        if (!abajos.length) falta.push("una parte de abajo (pantalón…)");
+      }
+      var msg;
+      if (falta.length) msg = "No puedo formar un conjunto completo. Te falta " + falta.join(" y ") + " adecuada para este tiempo y esta talla (o un conjunto/mono).";
+      else if (ctx.rechVaquero > 0 && ctx.rechEstilo === 0) msg = "Con tus prendas, las únicas combinaciones posibles mezclarían dos prendas vaqueras, y prefiero no proponerlas. Una prenda de otro tejido o color lo resolvería.";
+      else if (ctx.rechEstilo > 0) msg = "Las combinaciones posibles mezclarían estilos muy distintos (por ejemplo, algo arreglado con algo deportivo), así que no te propongo ninguna. Una prenda de diario sirve de puente. Si alguna prenda tiene mal el estilo, corrígelo en Editar › Más detalles.";
+      else msg = "No he encontrado ninguna combinación válida con tus prendas para este tiempo. Puede que las tallas no sean compatibles entre sí.";
+      return { vacio: msg, nivel: nivel, fuente: fuente };
+    }
+
+    cand.sort(function (a, b) { return b.score - a.score; });
+    var elegidos = [];
+    [2, 1].forEach(function (minDif) {
+      cand.forEach(function (c) {
+        if (elegidos.length >= 4 || elegidos.indexOf(c) >= 0) return;
+        var ok = elegidos.every(function (e) { return c.ids.filter(function (id) { return e.ids.indexOf(id) < 0; }).length >= minDif; });
+        if (ok) elegidos.push(c);
+      });
+    });
+
+    elegidos.forEach(function (o) {
+      var Asup = o.it.capa2 || o.it.capa || o.it.arriba || o.it.uno, Binf = o.it.abajo || o.it.uno;
+      var acc = mejorComplemento(accesorios, [Asup, Binf], h, 0.75);
+      var calc = mejorComplemento(calcetines, [o.it.calzado, Binf], h, 0.65);
+      var gor = mejorComplemento(gorros, [Asup], h, 0.75);
+      if (calc) { o.it.calcetin = calc; o.ids.push(calc.id); }
+      if (gor) { o.it.gorro = gor; o.ids.push(gor.id); }
+      if (acc) { o.it.acc = acc; o.ids.push(acc.id); }
+      C.vistos[claveIds(o.ids)] = 1;
+      var ex = explicar(o, ctx);
+      o.razones = ex.razones; o.avisos = ex.avisos;
+    });
+    return { lista: elegidos, nivel: nivel, fuente: fuente, hayHistorial: h.hayHistorial };
+  }
+
+  function htmlConjunto(o, i) {
+    var it = o.it, piezas = [];
+    if (it.uno) piezas.push([it.uno, it.uno.categoria === "Monos" ? "Mono" : it.uno.categoria === "Vestidos" ? "Vestido" : "Conjunto"]);
+    else { piezas.push([it.arriba, "Arriba"]); piezas.push([it.abajo, "Abajo"]); }
+    if (it.capa) piezas.push([it.capa, "Capa"]);
+    if (it.capa2) piezas.push([it.capa2, "Abrigo"]);
+    if (it.calzado) piezas.push([it.calzado, "Calzado"]);
+    if (it.calcetin) piezas.push([it.calcetin, "Calcetines"]);
+    if (it.gorro) piezas.push([it.gorro, "Gorro"]);
+    if (it.acc) piezas.push([it.acc, "Accesorio"]);
+    var h = '<div class="conj" data-ids="' + esc(o.ids.join(",")) + '">'
+      + '<div class="conj-cab"><span>Propuesta ' + (i + 1) + '</span><span class="chip">' + etiquetaScore(o.score) + "</span></div>"
+      + '<div class="conj-fotos">';
+    piezas.forEach(function (x) {
+      h += '<figure><div class="im"><img alt="' + esc(x[0].nombre) + '" data-mini="' + esc(x[0].id) + '"></div><figcaption>' + x[1] + "</figcaption></figure>";
+    });
+    h += "</div>";
+    h += '<div class="conj-nombres">' + piezas.map(function (x) { return esc(x[0].nombre); }).join(" · ") + "</div>";
+    h += '<ul class="razones">' + o.razones.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>";
+    o.avisos.forEach(function (a) { h += '<div class="aviso-caja">' + esc(a) + "</div>"; });
+    h += '<div class="fila-btn"><button class="btn sec" data-hoy="' + i + '">' + (C.dia ? "Se lo pone mañana" : "Se lo pone hoy") + '</button><button class="btn sec" data-favc="' + i + '" style="flex:0 0 auto;width:auto;padding:15px 18px">♡ Favorito</button></div></div>';
+    return h;
+  }
+
+  function cargarMinis(cont) {
+    cont.querySelectorAll("img[data-mini]").forEach(function (img) {
+      var p = S.inv.prendas.find(function (x) { return x.id === img.getAttribute("data-mini"); });
+      if (!p) return;
+      encolar(async function () {
+        var u = await urlMini(p);
+        if (u) { img.src = u; img.classList.add("lista"); }
+      });
+    });
+  }
+
+  function crearConjuntos() {
+    var cont = $("resultados");
+    if (!S.inv.prendas.length) {
+      cont.innerHTML = '<div class="vacio-caja">Todavía no hay prendas. Añade algunas en la pestaña <b>Añadir</b> y vuelve aquí.</div>';
+      return;
+    }
+    var r = generarConjuntos();
+    var origen = { auto_tiempo: " (según el tiempo previsto)", auto_epoca: " (según la época del año, porque no tengo el tiempo)", manual: " (elegido por ti)", modo: "" }[r.fuente] || "";
+    var cab = "Tiempo considerado: <b>" + NIVEL_NOMBRE[r.nivel] + "</b>" + origen + ".";
+    if (r.vacio) {
+      C.resultados = [];
+      cont.innerHTML = '<div class="vacio-caja">' + esc(r.vacio) + "</div>";
+      return;
+    }
+    C.resultados = r.lista;
+    var h = '<p class="nota">' + cab + (r.hayHistorial ? "" : " Todavía no hay historial: cuando guardes los conjuntos que lleva, evitaré repetirlos y daré prioridad a lo que menos usa.") + "</p>";
+    r.lista.forEach(function (o, i) { h += htmlConjunto(o, i); });
+    h += '<p class="nota">Pulsa «Crear conjuntos» otra vez para ver otras propuestas.</p>';
+    cont.innerHTML = h;
+    cargarMinis(cont);
+    $("btnCrear").textContent = "Crear otras propuestas";
+  }
+
+  async function guardarHoy(i) {
+    var o = C.resultados[i];
+    if (!o) return;
+    var f = fechaHoy(C.dia), cuando = C.dia ? "mañana" : "hoy";
+    var ya = (S.inv.calendario || []).some(function (e) { return e.fecha === f; });
+    if (ya && !confirm("Ya hay un conjunto guardado para " + cuando + ". ¿Quieres sustituirlo?")) return;
+    try {
+      await modificarInv(function (inv) {
+        inv.calendario = inv.calendario.filter(function (e) { return e.fecha !== f; });
+        inv.calendario.push({ id: nuevoId(), fecha: f, prendas: o.ids.slice(), modo: C.modo, creada: new Date().toISOString() });
+      });
+      toast("Guardado como el conjunto de " + cuando + " ✓");
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+
+
+  // ================== Tiempo de Cartagena (Fase 4) ==================
+  var CARTAGENA = { lat: 37.6257, lon: -0.9966 };
+  var W = { datos: null, hora: 0, error: "", cargando: false };
+  var N = function (v) { return typeof v === "number" && isFinite(v); };
+
+  function urlTiempo() {
+    return "https://api.open-meteo.com/v1/forecast?latitude=" + CARTAGENA.lat + "&longitude=" + CARTAGENA.lon
+      + "&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_gusts_10m"
+      + "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m"
+      + "&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max"
+      + "&timezone=Europe%2FMadrid&forecast_days=2&wind_speed_unit=kmh";
+  }
+
+  async function cargarTiempo(forzar) {
+    if (W.cargando) return;
+    if (!forzar && W.datos && Date.now() - W.hora < 15 * 60 * 1000) return;
+    W.cargando = true; W.error = "";
+    pintarTiempo();
+    try {
+      var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 12000);
+      var r;
+      try { r = await fetch(urlTiempo(), { signal: ctl.signal }); } finally { clearTimeout(t); }
+      if (!r.ok) throw new Error("error " + r.status);
+      var d = await r.json();
+      if (!d || !d.hourly || !Array.isArray(d.hourly.time) || !d.current) throw new Error("respuesta inesperada");
+      W.datos = d; W.hora = Date.now();
+    } catch (e) {
+      W.error = "No se pudo consultar el tiempo (" + (e.name === "AbortError" ? "tardó demasiado" : e.message) + ").";
+    } finally { W.cargando = false; }
+    pintarTiempo();
+    pintarControlesConjuntos();
+  }
+
+  function sumarDias(fecha, n) {
+    var p = fecha.split("-").map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
+    return d.getUTCFullYear() + "-" + dos(d.getUTCMonth() + 1) + "-" + dos(d.getUTCDate());
+  }
+  function media(a) { a = a.filter(N); return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : null; }
+  function maximo(a) { a = a.filter(N); return a.length ? Math.max.apply(null, a) : null; }
+  function minimoV(a) { a = a.filter(N); return a.length ? Math.min.apply(null, a) : null; }
+
+  // Resume el día pedido (0 = hoy, 1 = mañana) con la hora de Cartagena que da la propia previsión
+  function resumenTiempo(off) {
+    var d = W.datos; if (!d) return null;
+    var H = d.hourly, ahoraTxt = d.current.time || "";
+    var hoy = ahoraTxt.slice(0, 10), horaAhora = parseInt(ahoraTxt.slice(11, 13), 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(hoy)) return null;
+    var f = sumarDias(hoy, off), idx = [];
+    for (var i = 0; i < H.time.length; i++) if (H.time[i].slice(0, 10) === f) idx.push(i);
+    if (idx.length < 12) return null;
+    function hora(i) { return parseInt(H.time[i].slice(11, 13), 10); }
+    var desde = 8;
+    if (off === 0 && N(horaAhora)) desde = Math.max(8, horaAhora);
+    var ventana = idx.filter(function (i) { return hora(i) >= desde && hora(i) <= 21; });
+    if (ventana.length < 3) ventana = idx.filter(function (i) { return hora(i) >= 8 && hora(i) <= 21; });
+    function col(nombre, ii) { return ii.map(function (i) { return H[nombre] ? H[nombre][i] : null; }); }
+    var sens = col("apparent_temperature", ventana), avg = media(sens), mn = minimoV(sens), mx = maximo(sens);
+    if (!N(avg)) return null;
+    var tEf = 0.7 * avg + 0.3 * mn;
+    var nivel = tEf >= 27 ? 1 : tEf >= 21 ? 2 : tEf >= 15 ? 3 : 4;
+    function parte(h1, h2) {
+      var ii = idx.filter(function (i) { return hora(i) >= h1 && hora(i) <= h2; });
+      return { t: media(col("temperature_2m", ii)), s: media(col("apparent_temperature", ii)), pl: maximo(col("precipitation_probability", ii)) };
+    }
+    var di = d.daily && d.daily.time ? d.daily.time.indexOf(f) : -1;
+    function dia(nombre) { return di >= 0 && d.daily[nombre] ? d.daily[nombre][di] : null; }
+    var mm = dia("precipitation_sum");
+    if (!N(mm)) mm = col("precipitation", ventana).filter(N).reduce(function (s, x) { return s + x; }, 0);
+    return {
+      fecha: f, nivel: nivel, tEf: tEf, avg: avg, minS: mn, maxS: mx, swing: mx - mn,
+      tmin: N(dia("temperature_2m_min")) ? dia("temperature_2m_min") : minimoV(col("temperature_2m", ventana)),
+      tmax: N(dia("temperature_2m_max")) ? dia("temperature_2m_max") : maximo(col("temperature_2m", ventana)),
+      manana: parte(8, 13), tarde: parte(14, 19), noche: parte(20, 23),
+      probLluvia: maximo(col("precipitation_probability", ventana)) || 0, mm: mm || 0,
+      vientoMax: maximo(col("wind_speed_10m", ventana)) || 0,
+      codigo: maximo(col("weather_code", ventana))
+    };
+  }
+
+  function nivelAutoActual() {
+    var r = resumenTiempo(C.dia);
+    if (r) return { nivel: r.nivel, fuente: "auto_tiempo" };
+    return { nivel: NIVEL_AUTO[temporadaActual(new Date())], fuente: "auto_epoca" };
+  }
+
+  function descTiempo(c) {
+    if (!N(c)) return "";
+    if (c === 0) return "despejado";
+    if (c === 1) return "casi despejado";
+    if (c === 2) return "parcialmente nublado";
+    if (c === 3) return "nublado";
+    if (c === 45 || c === 48) return "niebla";
+    if (c >= 51 && c <= 57) return "llovizna";
+    if (c >= 61 && c <= 67) return "lluvia";
+    if (c >= 71 && c <= 77) return "nieve";
+    if (c >= 80 && c <= 82) return "chubascos";
+    if (c === 85 || c === 86) return "chubascos de nieve";
+    if (c >= 95) return "tormenta";
+    return "";
+  }
+  function g(v) { return N(v) ? Math.round(v) + "°" : "–"; }
+
+  // Consejos de ropa según el tiempo (no dependen de lo que haya en el armario)
+  function recomendacion(r, nivel) {
+    var l = [];
+    var capas = { 1: "Una sola capa ligera (camiseta o body).", 2: "Una o dos capas: camiseta o body y algo fino a mano (rebeca o chaleco).",
+      3: "Dos capas: camiseta o body y encima jersey, sudadera o chaqueta.", 4: "Dos o tres capas: camiseta o body, jersey y abrigo o chaqueta gruesa. Gorro si hace viento." }[nivel];
+    var fuera = { 1: "No hace falta chaqueta ni abrigo: ropa ligera.", 2: "Una chaqueta ligera o rebeca a mano por si refresca.",
+      3: "Chaqueta o sudadera mejor que abrigo grueso.", 4: "Abrigo o chaqueta gruesa." }[nivel];
+    l.push(capas); l.push(fuera);
+    if (r.swing >= 8) l.push("Hay mucha diferencia de temperatura a lo largo del día (" + g(r.minS) + " a " + g(r.maxS) + " de sensación): mejor capas fáciles de quitar y poner.");
+    if (N(r.noche.s) && N(r.tarde.s) && r.tarde.s - r.noche.s >= 4) l.push("Por la noche baja a unos " + g(r.noche.s) + ": lleva una capa por si acaso.");
+    if (r.probLluvia >= 50 || r.mm >= 1) l.push("Hay riesgo claro de lluvia (hasta " + Math.round(r.probLluvia) + "%): ropa que se pueda mojar y un impermeable o capota.");
+    else if (r.probLluvia >= 30) l.push("Posibilidad de lluvia (" + Math.round(r.probLluvia) + "%): conviene llevar algo para la lluvia.");
+    if (r.vientoMax >= 30) l.push("Viento fuerte (hasta " + Math.round(r.vientoMax) + " km/h): mejor una capa cortavientos y gorro.");
+    return l;
+  }
+
+  // Prendas del armario que encajan con el tiempo del día
+  function prendasAdecuadas(nivel) {
+    var aj = S.inv.ajustes || {};
+    return S.inv.prendas.filter(function (p) {
+      if (p.estado && p.estado !== "disponible") return false;
+      if (p.categoria === "Pijamas" || (p.categoria === "Calzado" && !aj.usaCalzado)) return false;
+      if (sc(p, nivel) < 0.8 || !tallaValida(p, aj)) return false;
+      if (nivel === 1 && (p.abrigo === "calentito" || ["Abrigos y chaquetas", "Chalecos", "Rebecas"].indexOf(p.categoria) >= 0 || calidez(p) > 1.5)) return false;
+      if (nivel === 2 && p.abrigo === "calentito") return false;
+      return true;
+    });
+  }
+
+  function pintarTiempo() {
+    var el = $("tiempoCuerpo"); if (!el) return;
+    $("btnTiempo").disabled = W.cargando;
+    if (!W.datos) {
+      el.innerHTML = W.cargando ? '<p class="nota">Consultando el tiempo de Cartagena…</p>'
+        : '<div class="aviso-caja">' + esc(W.error || "Sin datos del tiempo.") + " Mientras tanto, el modo automático usa la época del año; también puedes elegir el tiempo a mano más abajo.</div>";
+      return;
+    }
+    var r = resumenTiempo(C.dia);
+    if (!r) { el.innerHTML = '<div class="aviso-caja">No hay previsión completa para ese día.</div>'; return; }
+    var cur = W.datos.current, h = "";
+    if (C.dia === 0 && N(cur.temperature_2m)) {
+      h += '<div class="t-ahora"><span class="t-grande">' + g(cur.temperature_2m) + "</span><span>Sensación " + g(cur.apparent_temperature)
+        + (descTiempo(cur.weather_code) ? " · " + esc(descTiempo(cur.weather_code)) : "") + " · ahora</span></div>";
+    } else if (descTiempo(r.codigo)) {
+      h += '<p class="nota" style="margin:0 0 6px">Cielo: ' + esc(descTiempo(r.codigo)) + ".</p>";
+    }
+    h += '<div class="t-fila"><span>Mínima / máxima</span><b>' + g(r.tmin) + " / " + g(r.tmax) + "</b></div>";
+    h += '<div class="t-fila"><span>Sensación media</span><b>' + g(r.avg) + "</b></div>";
+    h += '<div class="t-fila"><span>Lluvia</span><b>' + Math.round(r.probLluvia) + "% · " + (Math.round(r.mm * 10) / 10) + " mm</b></div>";
+    h += '<div class="t-fila"><span>Viento</span><b>hasta ' + Math.round(r.vientoMax) + " km/h</b></div>";
+    h += '<div class="t-partes">'
+      + "<div>Mañana<b>" + g(r.manana.t) + "</b>sens. " + g(r.manana.s) + "</div>"
+      + "<div>Tarde<b>" + g(r.tarde.t) + "</b>sens. " + g(r.tarde.s) + "</div>"
+      + "<div>Noche<b>" + g(r.noche.t) + "</b>sens. " + g(r.noche.s) + "</div></div>";
+    var nivelUso = C.modo === "frio" ? 4 : C.modo === "calor" ? 1 : (C.nivel === "auto" ? r.nivel : parseInt(C.nivel, 10));
+    h += '<p class="grupo-tit">Qué ponerle (día «' + NIVEL_NOMBRE[r.nivel] + '»)</p><ul class="razones">'
+      + recomendacion(r, r.nivel).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
+    if (nivelUso !== r.nivel) h += '<div class="aviso-caja">Has elegido un tiempo distinto al previsto, así que los conjuntos usarán «' + NIVEL_NOMBRE[nivelUso] + '».</div>';
+    var ad = S.inv ? prendasAdecuadas(nivelUso) : [];
+    if (S.inv && S.inv.prendas.length) {
+      h += '<details class="mas" style="margin:12px 0 4px"><summary>Prendas de tu armario adecuadas (' + ad.length + ')</summary><div class="dentro">';
+      if (!ad.length) h += '<p class="nota">Ninguna de tus prendas encaja bien con este tiempo.</p>';
+      var grupos = {};
+      ad.forEach(function (p) { (grupos[p.categoria] = grupos[p.categoria] || []).push(p); });
+      Object.keys(grupos).forEach(function (c) {
+        h += '<div class="grupo-tit">' + esc(c) + '</div><div class="mini-grid">';
+        grupos[c].forEach(function (p) { h += '<figure><div class="im"><img alt="" data-mini="' + esc(p.id) + '"></div><figcaption>' + esc(p.nombre) + "</figcaption></figure>"; });
+        h += "</div>";
+      });
+      h += "</div></details>";
+    }
+    var hh = new Date(W.hora);
+    h += '<p class="nota" style="margin:10px 0 0">Datos: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Actualizado a las ' + dos(hh.getHours()) + ":" + dos(hh.getMinutes()) + ".</p>";
+    if (W.error) h += '<div class="aviso-caja">' + esc(W.error) + " Muestro los últimos datos que tenía.</div>";
+    el.innerHTML = h;
+    cargarMinis(el);
+  }
+
+
+  // ================== Calendario y favoritos (Fase 5) ==================
+  var K = { mes: null, sel: "", stats: "30" };
+  var FV = { vista: "prendas" };
+  var PK = null; // selector de prendas del calendario
+  var ETQ = {
+    "Camisetas y partes de arriba": ["Camiseta", 1], "Bodies": ["Body", 1], "Camisas": ["Camisa", 1], "Jerséis": ["Jersey", 2], "Sudaderas": ["Sudadera", 2],
+    "Pantalones y partes de abajo": ["Pantalón", 3], "Petos": ["Peto", 3], "Conjuntos": ["Conjunto", 0], "Monos": ["Mono", 0], "Vestidos": ["Vestido", 0],
+    "Abrigos y chaquetas": ["Abrigo", 4], "Chalecos": ["Chaleco", 4], "Rebecas": ["Rebeca", 4], "Calzado": ["Calzado", 5], "Calcetines": ["Calcetines", 6],
+    "Gorros": ["Gorro", 7], "Accesorios": ["Accesorio", 8]
+  };
+  function etq(p) { return ETQ[p.categoria] || [p.categoria, 9]; }
+  function mayus(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+  function fechaDe(f) { var p = f.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function fechaLarga(f) { return mayus(fechaDe(f).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })); }
+  function fechaCorta(f) { return fechaDe(f).toLocaleDateString("es-ES", { day: "numeric", month: "short" }); }
+  function piezasPorIds(ids) {
+    var mapa = {};
+    S.inv.prendas.forEach(function (p) { mapa[p.id] = p; });
+    return ids.map(function (id) { return mapa[id]; }).filter(Boolean).sort(function (a, b) { return etq(a)[1] - etq(b)[1]; });
+  }
+  function htmlPiezas(ps) {
+    return '<div class="conj-fotos">' + ps.map(function (p) {
+      return '<figure><div class="im"><img alt="' + esc(p.nombre) + '" data-mini="' + esc(p.id) + '"></div><figcaption>' + esc(etq(p)[0]) + "</figcaption></figure>";
+    }).join("") + '</div><div class="conj-nombres">' + ps.map(function (p) { return esc(p.nombre); }).join(" · ") + "</div>";
+  }
+  async function guardarEnCalendario(f, ids, modo) {
+    await modificarInv(function (inv) {
+      inv.calendario = inv.calendario.filter(function (e) { return e.fecha !== f; });
+      inv.calendario.push({ id: nuevoId(), fecha: f, prendas: ids.slice(), modo: modo, creada: new Date().toISOString() });
+      inv.calendario.sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; });
+    });
+  }
+  function confirmarSustituir(f) {
+    var ya = (S.inv.calendario || []).some(function (e) { return e.fecha === f; });
+    return !ya || confirm("Ya hay un conjunto guardado el " + fechaCorta(f) + ". ¿Quieres sustituirlo?");
+  }
+
+  // ---- Calendario ----
+  function renderCalendario() {
+    if (!K.mes) { var h0 = new Date(); K.mes = new Date(h0.getFullYear(), h0.getMonth(), 1); }
+    if (!K.sel) K.sel = fechaHoy(0);
+    var y = K.mes.getFullYear(), m = K.mes.getMonth();
+    $("calMes").textContent = mayus(K.mes.toLocaleDateString("es-ES", { month: "long", year: "numeric" }));
+    $("calSem").innerHTML = ["L", "M", "X", "J", "V", "S", "D"].map(function (d) { return '<span class="cal-nom">' + d + "</span>"; }).join("");
+    var primero = (new Date(y, m, 1).getDay() + 6) % 7, dias = new Date(y, m + 1, 0).getDate();
+    var con = {}; S.inv.calendario.forEach(function (e) { con[e.fecha] = true; });
+    var hoy = fechaHoy(0), h = "";
+    for (var i = 0; i < primero; i++) h += "<span></span>";
+    for (var d = 1; d <= dias; d++) {
+      var f = y + "-" + dos(m + 1) + "-" + dos(d);
+      h += '<button class="cal-dia' + (f === hoy ? " hoy" : "") + (f === K.sel ? " sel" : "") + (con[f] ? " con" : "") + '" data-f="' + f + '">' + d + "</button>";
+    }
+    $("calGrid").innerHTML = h;
+    renderDia(); renderStats();
+  }
+  function renderDia() {
+    var f = K.sel, ent = S.inv.calendario.find(function (e) { return e.fecha === f; }), el = $("calDia");
+    var h = '<div class="conj-cab"><span>' + esc(fechaLarga(f)) + "</span></div>";
+    if (ent) {
+      var ps = piezasPorIds(ent.prendas);
+      h += ps.length ? htmlPiezas(ps) : '<p class="nota">Las prendas de este día ya no existen.</p>';
+      h += '<button class="btn" data-cal="editar">Cambiar prendas</button>'
+        + (ps.length ? '<button class="btn sec" data-cal="fav">♡ Guardar en favoritos</button>' : "")
+        + '<button class="btn peligro" data-cal="borrar">Eliminar este día</button>';
+    } else {
+      h += '<p class="nota">Todavía no hay conjunto guardado este día.</p><button class="btn" data-cal="nuevo">Añadir conjunto de este día</button>';
+      if ((S.inv.conjuntos || []).length) h += '<button class="btn sec" data-cal="favorito">Usar un conjunto favorito</button>';
+    }
+    el.innerHTML = h; cargarMinis(el);
+  }
+  function renderStats() {
+    pintarPares($("segStats"), [["30", "Últimos 30 días"], ["todo", "Todo el tiempo"]], K.stats);
+    var aj = S.inv.ajustes || {}, hoy = new Date(), hoyMs = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    var cont = {}, hay = 0;
+    S.inv.calendario.forEach(function (e) {
+      var f = e.fecha.split("-").map(Number), dias = Math.round((hoyMs - Date.UTC(f[0], f[1] - 1, f[2])) / 86400000);
+      if (dias < 0 || (K.stats === "30" && dias > 30)) return;
+      hay++; e.prendas.forEach(function (id) { cont[id] = (cont[id] || 0) + 1; });
+    });
+    var el = $("calStats");
+    if (!hay) { el.innerHTML = '<p class="nota">Todavía no hay conjuntos guardados en este periodo. Cuando guardes lo que lleva cada día, aquí verás qué prendas usa más y cuáles apenas usa.</p>'; return; }
+    var elegibles = S.inv.prendas.filter(function (p) {
+      return p.categoria !== "Pijamas" && !(p.categoria === "Calzado" && !aj.usaCalzado) && (!p.estado || p.estado === "disponible");
+    });
+    var mas = elegibles.filter(function (p) { return cont[p.id] > 0; }).sort(function (a, b) { return cont[b.id] - cont[a.id]; }).slice(0, 6);
+    var idsMas = mas.map(function (p) { return p.id; });
+    var menos = elegibles.filter(function (p) { return idsMas.indexOf(p.id) < 0; })
+      .sort(function (a, b) { return (cont[a.id] || 0) - (cont[b.id] || 0); }).slice(0, 6);
+    function grid(lista) {
+      return '<div class="mini-grid stats">' + lista.map(function (p) {
+        var n = cont[p.id] || 0;
+        return '<figure><div class="im"><img alt="" data-mini="' + esc(p.id) + '"></div><figcaption><span class="cap-nom">' + esc(p.nombre) + '</span><span class="cap-n">' + (n ? n + (n === 1 ? " vez" : " veces") : "nunca") + "</span></figcaption></figure>";
+      }).join("") + "</div>";
+    }
+    el.innerHTML = '<div class="grupo-tit">Lo que más lleva</div>' + (mas.length ? grid(mas) : '<p class="nota">Nada todavía.</p>')
+      + '<div class="grupo-tit">Lo que menos lleva</div>' + (menos.length ? grid(menos) : '<p class="nota">Está usando todo lo que tiene.</p>')
+      + '<p class="nota">El estilista da prioridad a lo que menos usa para aprovechar toda la ropa.</p>';
+    cargarMinis(el);
+  }
+
+  // ---- Selector de prendas para un día ----
+  function abrirSelector(fecha, ids) {
+    var existen = S.inv.prendas.map(function (p) { return p.id; });
+    PK = { fecha: fecha, ids: ids.filter(function (id) { return existen.indexOf(id) >= 0; }), cat: "" };
+    pintarSelector(); $("fondo2").hidden = false;
+  }
+  function pintarSelector() {
+    var cats = [];
+    S.inv.prendas.forEach(function (p) { if (p.categoria !== "Pijamas" && cats.indexOf(p.categoria) < 0) cats.push(p.categoria); });
+    var lista = S.inv.prendas.filter(function (p) { return p.categoria !== "Pijamas" && (!PK.cat || p.categoria === PK.cat); })
+      .sort(function (a, b) { return etq(a)[1] - etq(b)[1] || a.nombre.localeCompare(b.nombre, "es"); });
+    var h = '<div class="conj-cab"><span>' + esc(fechaLarga(PK.fecha)) + '</span><button class="linkbtn" data-sel="cerrar">Cerrar</button></div>'
+      + '<p class="nota">Toca las prendas que ha llevado ese día.</p>'
+      + '<select id="selCat"><option value="">Todas las categorías</option>'
+      + cats.map(function (c) { return '<option value="' + esc(c) + '"' + (c === PK.cat ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select>"
+      + '<div class="mini-grid" style="margin-top:12px">'
+      + lista.map(function (p) {
+        return '<figure class="selp' + (PK.ids.indexOf(p.id) >= 0 ? " on" : "") + '" data-id="' + esc(p.id) + '"><div class="im"><img alt="" data-mini="' + esc(p.id) + '"><span class="chk">✓</span></div><figcaption>' + esc(p.nombre) + "</figcaption></figure>";
+      }).join("") + "</div>"
+      + '<button class="btn" data-sel="guardar" id="btnGuardarSel"></button>';
+    $("hoja2").innerHTML = h;
+    actualizarBtnSel();
+    cargarMinis($("hoja2"));
+  }
+  function actualizarBtnSel() {
+    var b = $("btnGuardarSel"); if (!b) return;
+    b.textContent = "Guardar (" + PK.ids.length + (PK.ids.length === 1 ? " prenda)" : " prendas)");
+  }
+  function cerrarOverlay2() { $("fondo2").hidden = true; $("hoja2").innerHTML = ""; PK = null; }
+  async function guardarSelector() {
+    if (!PK) return;
+    if (PK.ids.length < 2) { toast("Elige al menos 2 prendas"); return; }
+    var f = PK.fecha, ids = PK.ids.slice();
+    try {
+      await guardarEnCalendario(f, ids, "manual");
+      cerrarOverlay2(); K.sel = f; renderCalendario(); toast("Conjunto guardado ✓");
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+  function abrirListaFavoritos(fecha) {
+    var h = '<div class="conj-cab"><span>Elige un conjunto favorito</span><button class="linkbtn" data-sel="cerrar">Cerrar</button></div>';
+    S.inv.conjuntos.forEach(function (c) {
+      var ps = piezasPorIds(c.prendas); if (!ps.length) return;
+      h += '<div class="conj"><div class="conj-cab"><span>' + esc(c.nombre) + "</span></div>" + htmlPiezas(ps)
+        + '<button class="btn" data-elegir="' + esc(c.id) + '" data-fecha="' + esc(fecha) + '">Usar este conjunto</button></div>';
+    });
+    $("hoja2").innerHTML = h; $("fondo2").hidden = false; cargarMinis($("hoja2"));
+  }
+
+  // ---- Favoritos ----
+  async function guardarFavorito(ids, nombreDef) {
+    var clave = claveIds(ids);
+    if ((S.inv.conjuntos || []).some(function (c) { return claveIds(c.prendas) === clave; })) { toast("Ya está en tus conjuntos favoritos"); return; }
+    var def = nombreDef || "Conjunto " + fechaCorta(fechaHoy(0));
+    var nombre = prompt("Nombre para este conjunto favorito:", def);
+    if (nombre === null) return;
+    nombre = (nombre || "").trim() || def;
+    try {
+      await modificarInv(function (inv) {
+        if (!inv.conjuntos.some(function (c) { return claveIds(c.prendas) === clave; }))
+          inv.conjuntos.push({ id: nuevoId(), nombre: nombre, prendas: ids.slice(), creada: new Date().toISOString() });
+      });
+      toast("Guardado en favoritos ♥");
+      if (S.tab === "favoritos") renderFavoritos();
+      if (S.tab === "calendario") renderDia();
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+  function renderFavoritos() {
+    pintarPares($("segFav"), [["prendas", "Prendas"], ["conjuntos", "Conjuntos"]], FV.vista);
+    var el = $("favCuerpo");
+    if (FV.vista === "prendas") {
+      var fs = S.inv.prendas.filter(function (p) { return p.favorito; });
+      if (!fs.length) { el.innerHTML = '<div class="vacio">Todavía no hay prendas favoritas.<br>Toca el corazón de una prenda en <b>Armario</b> para marcarla.</div>'; return; }
+      el.innerHTML = '<div class="grid">' + fs.map(function (p) {
+        return '<div class="tarjeta" data-id="' + esc(p.id) + '"><div class="foto"><img alt="" data-mini="' + esc(p.id) + '"><button class="fav on" data-fav="' + esc(p.id) + '" aria-label="Quitar de favoritas">♥</button></div>'
+          + '<div class="info"><div class="nom">' + esc(p.nombre) + '</div><div class="meta">' + esc(p.categoria) + "</div></div></div>";
+      }).join("") + "</div>";
+      cargarMinis(el);
+      return;
+    }
+    var cs = S.inv.conjuntos || [];
+    if (!cs.length) { el.innerHTML = '<div class="vacio">Todavía no hay conjuntos favoritos.<br>Guarda uno con <b>♡ Favorito</b> en <b>Conjuntos</b> o desde el <b>Calendario</b>.</div>'; return; }
+    el.innerHTML = cs.map(function (c) {
+      var ps = piezasPorIds(c.prendas);
+      return '<div class="conj" data-cid="' + esc(c.id) + '"><div class="conj-cab"><span>' + esc(c.nombre) + "</span></div>"
+        + (ps.length ? htmlPiezas(ps) : '<p class="nota">Las prendas de este conjunto ya no existen.</p>')
+        + '<div class="fila-btn"><button class="btn sec" data-fc="hoy">Hoy</button><button class="btn sec" data-fc="manana">Mañana</button></div>'
+        + '<div class="fila-btn"><button class="btn sec" data-fc="renombrar">Cambiar nombre</button><button class="btn peligro" data-fc="borrar">Eliminar</button></div></div>';
+    }).join("");
+    cargarMinis(el);
+  }
+  async function accionFavorito(id, acc) {
+    var c = S.inv.conjuntos.find(function (x) { return x.id === id; }); if (!c) return;
+    try {
+      if (acc === "hoy" || acc === "manana") {
+        var f = fechaHoy(acc === "hoy" ? 0 : 1);
+        if (!piezasPorIds(c.prendas).length) { toast("Las prendas de este conjunto ya no existen"); return; }
+        if (!confirmarSustituir(f)) return;
+        await guardarEnCalendario(f, c.prendas, "favorito");
+        toast("Guardado para " + (acc === "hoy" ? "hoy" : "mañana") + " ✓");
+      } else if (acc === "renombrar") {
+        var nuevo = prompt("Nuevo nombre:", c.nombre);
+        if (nuevo === null || !nuevo.trim()) return;
+        await modificarInv(function (inv) { var q = inv.conjuntos.find(function (x) { return x.id === id; }); if (q) q.nombre = nuevo.trim(); });
+        renderFavoritos();
+      } else if (acc === "borrar") {
+        if (!confirm("¿Eliminar el conjunto favorito «" + c.nombre + "»? Las prendas no se borran.")) return;
+        await modificarInv(function (inv) { inv.conjuntos = inv.conjuntos.filter(function (x) { return x.id !== id; }); });
+        renderFavoritos(); toast("Conjunto eliminado");
+      }
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+
+
+
+
+  // ================== Marcas, tallaje y prendas prestadas ==================
+  var AJ_VAL = { grande: 1, bien: 0, justa: -1 };
+  // Para cada marca: cuánto se desvía su talla. Una prenda que "le queda bien" con una etiqueta más grande que la talla
+  // de Juan indica que la marca talla pequeño; si con su talla le queda grande, talla grande.
+  function tendenciaMarcas() {
+    var g = {};
+    ((S.inv && S.inv.prendas) || []).forEach(function (p) {
+      var m = (p.marca || "").trim(); if (!m || !p.ajuste || AJ_VAL[p.ajuste] === undefined) return;
+      var a = idxRopa(p.talla || ""), b = idxRopa(p.ajusteTalla || ""); if (a < 0 || b < 0) return;
+      var k = norm(m), t = AJ_VAL[p.ajuste] - (a - b);
+      if (!g[k]) g[k] = { nombre: m, suma: 0, n: 0 };
+      g[k].suma += t; g[k].n++;
+    });
+    Object.keys(g).forEach(function (k) {
+      var m = g[k].suma / g[k].n; g[k].media = m;
+      g[k].txt = m >= 0.5 ? "suele tallar grande" : m <= -0.5 ? "suele tallar pequeño" : "talla normal";
+    });
+    return g;
+  }
+  function mostrarNotaMarca() {
+    var el = $("notaMarca"), m = norm(leerListaSel("fMarca", "fMarcaOtro", "marca", [])), t = m ? tendenciaMarcas()[m] : null;
+    if (!t) { el.hidden = true; return; }
+    el.hidden = false;
+    el.textContent = "Según tus datos, " + t.nombre + " " + t.txt + " (" + t.n + (t.n === 1 ? " prenda" : " prendas") + ")" + (t.n < 3 ? ": aún son pocos datos." : ".");
+  }
+  function htmlMarcasYPrestadas() {
+    var prendas = (S.inv.prendas || []).filter(function (p) { return p.estado !== "devuelta"; }), h = "";
+    // Marcas
+    var cuenta = {}, sinMarca = 0;
+    prendas.forEach(function (p) {
+      var m = (p.marca || "").trim(); if (!m) { sinMarca++; return; }
+      var k = norm(m); if (!cuenta[k]) cuenta[k] = { nombre: m, n: 0 }; cuenta[k].n++;
+    });
+    var ks = Object.keys(cuenta).sort(function (a, b) { return cuenta[b].n - cuenta[a].n; });
+    h += '<div class="card"><h2>Marcas</h2>';
+    if (!ks.length) h += '<p class="nota" style="margin:0">Aún no has indicado ninguna marca. Puedes añadirla en Editar › Más detalles.</p>';
+    else {
+      h += ks.slice(0, 10).map(function (k) { return '<div class="barra"><span>' + esc(cuenta[k].nombre) + "</span><b>" + cuenta[k].n + "</b></div>"; }).join("");
+      if (ks.length > 10) h += '<p class="nota">Y ' + (ks.length - 10) + " marcas más.</p>";
+      if (sinMarca) h += '<p class="nota" style="margin:8px 0 0">' + sinMarca + (sinMarca === 1 ? " prenda sin marca." : " prendas sin marca.") + "</p>";
+      var tz = tendenciaMarcas(), tk = Object.keys(tz).sort(function (a, b) { return tz[b].n - tz[a].n; });
+      h += '<p class="grupo-tit" style="margin-top:12px">Cómo talla cada marca</p>';
+      if (tk.length) {
+        h += tk.map(function (k) { var t = tz[k]; return '<div class="barra"><span>' + esc(t.nombre) + '</span><b class="' + (t.media >= 0.5 || t.media <= -0.5 ? "poco" : "") + '">' + t.txt + " · " + t.n + (t.n < 3 ? " (pocos datos)" : "") + "</b></div>"; }).join("");
+        h += '<p class="nota" style="margin:8px 0 0">Se calcula con las prendas donde has marcado «¿Cómo le queda?». Cuantas más, más fiable.</p>';
+      } else {
+        var conAj = prendas.filter(function (p) { return p.marca && p.ajuste; }).length;
+        h += '<p class="nota" style="margin:0">' + (conAj
+          ? "Para calcularlo hace falta indicar su fecha de nacimiento o su talla en Conjuntos › Ajustes de Juan antes de marcar cómo le queda la prenda."
+          : "Marca «¿Cómo le queda?» en algunas prendas con marca (Editar › Más detalles) y aquí verás qué marcas tallan grande o pequeño.") + "</p>";
+      }
+    }
+    h += "</div>";
+    // Conjuntos comprados
+    var cj = {};
+    prendas.forEach(function (p) { if (!p.conjunto) return; var k = norm(p.conjunto); (cj[k] = cj[k] || { n: p.conjunto, l: [] }).l.push(p); });
+    var ck = Object.keys(cj).sort(function (a, b) { return cj[a].n.localeCompare(cj[b].n, "es"); });
+    if (ck.length) {
+      h += '<div class="card"><h2>Conjuntos comprados</h2>' + ck.map(function (k) { return '<div class="barra"><span>' + esc(cj[k].n) + "</span><b" + (cj[k].l.length < 2 ? ' class="poco"' : "") + ">" + cj[k].l.length + (cj[k].l.length === 1 ? " pieza · falta la otra" : " piezas") + "</b></div>"; }).join("")
+        + '<p class="nota" style="margin:8px 0 0">Las piezas de un conjunto se combinan bien entre sí. Para guardarlo en favoritos, abre una pieza y pulsa «Guardar el conjunto en favoritos».</p></div>';
+    }
+    // Procedencia: compradas, regaladas y prestadas
+    var todas = S.inv.prendas || [], pend = todas.filter(porDevolver);
+    var nComp = todas.filter(function (p) { return origenEf(p) === "propia"; }).length;
+    var nRegN = todas.filter(function (p) { return origenEf(p) === "regalada_nueva"; }).length;
+    var nRegU = todas.filter(function (p) { return origenEf(p) === "regalada_usada"; }).length;
+    var dev = todas.filter(function (p) { return origenEf(p) === "prestada" && p.estado === "devuelta"; }).length;
+    if (nRegN || nRegU || pend.length || dev) {
+      h += '<div class="card"><h2>De dónde viene la ropa</h2>';
+      h += '<div class="barra"><span>Comprada</span><b>' + nComp + "</b></div>";
+      h += '<div class="barra"><span>Regalada (nueva)</span><b>' + nRegN + "</b></div>";
+      h += '<div class="barra"><span>Regalada (usada)</span><b>' + nRegU + "</b></div>";
+      h += '<div class="barra"><span>Prestada (por devolver)</span><b>' + pend.length + "</b></div>";
+      var porPersona = {};
+      pend.forEach(function (p) { var k = (p.prestadaDe || "").trim() || "Sin indicar de quién"; (porPersona[k] = porPersona[k] || []).push(p.nombre); });
+      if (pend.length) {
+        h += '<h3 style="margin:12px 0 4px;font-size:15px">Por devolver' + (dev ? " · " + dev + " ya devueltas" : "") + "</h3>";
+        h += Object.keys(porPersona).sort().map(function (k) { return '<div class="barra" style="display:block"><b>' + esc(k) + " (" + porPersona[k].length + ")</b><br><span style=\"color:var(--suave);font-size:13.5px\">" + porPersona[k].map(esc).join(", ") + "</span></div>"; }).join("");
+        h += '<p class="nota" style="margin:8px 0 0">Para verlas con foto: Armario › Filtros › «Prestadas (por devolver)».</p>';
+      } else if (dev) h += '<p class="nota" style="margin:8px 0 0">No tienes nada pendiente de devolver (' + dev + " ya devueltas).</p>";
+      h += "</div>";
+    }
+    return h;
+  }
+
+  // ================== Copia de seguridad ==================
+  function fechaCopia() { var d = new Date(), p = function (n) { return String(n).padStart(2, "0"); }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "_" + p(d.getHours()) + "-" + p(d.getMinutes()); }
+  function resumenInv(inv) { return inv.prendas.length + " prendas, " + inv.conjuntos.length + " conjuntos favoritos, " + inv.calendario.length + " días en el calendario"; }
+  async function copiaDropbox() {
+    var m = $("msgCopia"); m.textContent = "Guardando…";
+    try {
+      var inv = await leerInventario(), nombre = "/copias/inventario_" + fechaCopia() + ".json";
+      await subir(nombre, new Blob([JSON.stringify(inv, null, 1)], { type: "application/octet-stream" }));
+      m.textContent = "Copia guardada (" + resumenInv(inv) + "). La tienes en Dropbox, en la carpeta «copias» de la app.";
+    } catch (e) { m.textContent = "No se pudo guardar la copia: " + e.message; }
+  }
+  async function copiaDescargar() {
+    var m = $("msgCopia"); m.textContent = "Preparando…";
+    try {
+      var inv = await leerInventario();
+      var url = URL.createObjectURL(new Blob([JSON.stringify(inv, null, 1)], { type: "application/json" }));
+      var a = document.createElement("a"); a.href = url; a.download = "armario-juan_" + fechaCopia() + ".json";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      m.textContent = "Copia descargada (" + resumenInv(inv) + ").";
+    } catch (e) { m.textContent = "No se pudo descargar: " + e.message; }
+  }
+  async function restaurarArchivo(file) {
+    var m = $("msgCopia");
+    try {
+      var datos = JSON.parse(await file.text());
+      if (!datos || !Array.isArray(datos.prendas)) throw new Error("Este archivo no parece una copia del armario.");
+      var nuevo = normalizarInv(datos);
+      if (!confirm("Vas a sustituir tu armario actual por la copia (" + resumenInv(nuevo) + "). Antes se guardará una copia del estado actual en Dropbox. ¿Continuar?")) { m.textContent = "Cancelado. No se ha cambiado nada."; return; }
+      m.textContent = "Restaurando…";
+      var actual = await leerInventario();
+      await subir("/copias/antes-de-restaurar_" + fechaCopia() + ".json", new Blob([JSON.stringify(actual, null, 1)], { type: "application/octet-stream" }));
+      await modificarInv(function (inv) { Object.keys(inv).forEach(function (k) { delete inv[k]; }); Object.assign(inv, nuevo); });
+      m.textContent = "Restaurado: " + resumenInv(nuevo) + ".";
+      renderArmario();
+    } catch (e) { m.textContent = "No se pudo restaurar: " + (e.message || e); }
+  }
+
+  // ================== Completar mi armario (Fase 6) ==================
+  var B_ = "Pantalones y partes de abajo";
+  var TIPOS = [
+    { k: "cam_mc", nombre: "Camiseta de manga corta", cat: "Camisetas y partes de arriba", temp: "verano", abrigo: "ligero", estilo: "diario", sil: "camiseta" },
+    { k: "cam_ml", nombre: "Camiseta de manga larga", cat: "Camisetas y partes de arriba", temp: "todo el año", abrigo: "ligero", estilo: "diario", sil: "larga" },
+    { k: "body_mc", nombre: "Body de manga corta", cat: "Bodies", temp: "verano", abrigo: "ligero", estilo: "diario", sil: "body" },
+    { k: "body_ml", nombre: "Body de manga larga", cat: "Bodies", temp: "todo el año", abrigo: "ligero", estilo: "diario", sil: "body" },
+    { k: "camisa", nombre: "Camisa", cat: "Camisas", temp: "todo el año", abrigo: "ligero", estilo: "arreglado", sil: "larga" },
+    { k: "jersey_fino", nombre: "Jersey fino", cat: "Jerséis", temp: "otoño", abrigo: "medio", estilo: "diario", sil: "larga" },
+    { k: "jersey_grueso", nombre: "Jersey de punto grueso", cat: "Jerséis", temp: "invierno", abrigo: "calentito", estilo: "diario", sil: "larga" },
+    { k: "sudadera", nombre: "Sudadera", cat: "Sudaderas", temp: "otoño", abrigo: "medio", estilo: "deportivo", sil: "larga" },
+    { k: "pant_largo", nombre: "Pantalón largo", cat: B_, temp: "todo el año", abrigo: "medio", estilo: "diario", sil: "pantalon" },
+    { k: "pant_corto", nombre: "Pantalón corto", cat: B_, temp: "verano", abrigo: "ligero", estilo: "diario", sil: "corto" },
+    { k: "pant_invierno", nombre: "Pantalón de pana o forrado", cat: B_, temp: "invierno", abrigo: "calentito", estilo: "diario", sil: "pantalon" },
+    { k: "peto", nombre: "Peto", cat: "Petos", temp: "todo el año", abrigo: "medio", estilo: "diario", sil: "peto" },
+    { k: "chandal", nombre: "Pantalón de chándal", cat: B_, temp: "otoño", abrigo: "medio", estilo: "deportivo", sil: "pantalon" },
+    { k: "rebeca", nombre: "Rebeca", cat: "Rebecas", temp: "otoño", abrigo: "medio", estilo: "diario", sil: "chaqueta" },
+    { k: "chaqueta", nombre: "Chaqueta fina", cat: "Abrigos y chaquetas", temp: "otoño", abrigo: "medio", estilo: "diario", sil: "chaqueta" },
+    { k: "abrigo", nombre: "Abrigo", cat: "Abrigos y chaquetas", temp: "invierno", abrigo: "calentito", estilo: "diario", sil: "chaqueta" },
+    { k: "chaleco", nombre: "Chaleco", cat: "Chalecos", temp: "otoño", abrigo: "medio", estilo: "arreglado", sil: "chaleco" },
+    { k: "calcetines", nombre: "Calcetines", cat: "Calcetines", temp: "todo el año", abrigo: "ligero", estilo: "diario", sil: "calcetin", comp: "calcetin" },
+    { k: "gorro_lana", nombre: "Gorro de lana", cat: "Gorros", temp: "invierno", abrigo: "calentito", estilo: "diario", sil: "gorro", comp: "gorro" },
+    { k: "gorro_sol", nombre: "Gorro de sol", cat: "Gorros", temp: "verano", abrigo: "ligero", estilo: "diario", sil: "gorro", comp: "gorro" },
+    { k: "zapatillas", nombre: "Zapatillas", cat: "Calzado", temp: "todo el año", abrigo: "ligero", estilo: "diario", sil: "zapato", comp: "calzado", soloCalzado: true }
+  ];
+  var SIL = {
+    camiseta: "M30 20 L42 14 Q50 22 58 14 L70 20 L86 36 L76 46 L68 40 L68 84 L32 84 L32 40 L24 46 L14 36 Z",
+    larga: "M30 18 L42 12 Q50 20 58 12 L70 18 L90 66 L79 71 L68 42 L68 86 L32 86 L32 42 L21 71 L10 66 Z",
+    body: "M32 16 L42 12 Q50 20 58 12 L68 16 L84 30 L75 40 L68 35 L68 62 Q68 72 60 74 L60 88 L40 88 L40 74 Q32 72 32 62 L32 35 L25 40 L16 30 Z",
+    pantalon: "M32 12 L68 12 L72 90 L55 90 L50 42 L45 90 L28 90 Z",
+    corto: "M32 18 L68 18 L72 58 L54 58 L50 38 L46 58 L28 58 Z",
+    peto: "M37 8 L44 8 L44 24 L56 24 L56 8 L63 8 L63 30 L70 30 L74 90 L56 90 L50 54 L44 90 L26 90 L30 30 L37 30 Z",
+    chaqueta: "M28 16 L42 12 L50 22 L58 12 L72 16 L91 64 L80 69 L70 40 L70 90 L52 90 L52 28 L48 28 L48 90 L30 90 L30 40 L20 69 L9 64 Z",
+    chaleco: "M32 14 L44 12 L50 24 L56 12 L68 14 L72 42 L70 90 L52 90 L52 28 L48 28 L48 90 L30 90 L28 42 Z",
+    calcetin: "M40 10 L62 10 L62 50 L80 66 Q86 78 74 84 L54 86 Q44 86 42 76 L40 64 Z",
+    gorro: "M24 64 Q24 26 50 26 Q76 26 76 64 Z M22 64 L78 64 L78 76 L22 76 Z M44 14 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0",
+    zapato: "M12 62 L38 40 L56 52 L86 56 L90 74 L12 74 Z"
+  };
+  var COLORES_CAND = COLORES.map(function (c) { return c[0]; }).filter(function (c) { return c !== "Multicolor"; });
+  var PESO_NIVEL = { 1: 0.3, 2: 0.3, 3: 0.25, 4: 0.15 };
+  var ANA = null;
+  var memoColor = {};
+
+  function svgPrenda(sil, color) {
+    return '<svg viewBox="0 0 100 100" role="img" aria-label="Ilustración orientativa"><path d="' + SIL[sil] + '" fill="' + colorHex(color) + '" fill-rule="evenodd" stroke="#3d342b" stroke-opacity=".45" stroke-width="2" stroke-linejoin="round"/></svg>';
+  }
+  // Color en el análisis: si falta el color de una prenda, se cuenta como si combinara
+  function cp(a, b) {
+    if (!a || !b) return 0.85;
+    var k = a + "|" + b;
+    if (memoColor[k] === undefined) memoColor[k] = colorPar(a, b);
+    return memoColor[k];
+  }
+  function esSJ(p) { return p.categoria === "Sudaderas" || p.categoria === "Jerséis"; }
+  function prep(p) {
+    var q = Object.assign({}, p);   // copia: no se modifica el inventario real
+    q.categoria = catEf(q);
+    q._e = estiloDe(q); q._c = calidez(q); q._v = esVaquera(q) ? 1 : 0; q._s = esEstampada(q) ? 1 : 0;
+    q._k = q.conjunto ? norm(q.conjunto) : "";
+    q._i = q.talla ? idxRopa(q.talla) : -1; q._n = NEUTROS.indexOf(q.color) >= 0 || !q.color;
+    q._sc = { 1: sc(q, 1), 2: sc(q, 2), 3: sc(q, 3), 4: sc(q, 4) };
+    return q;
+  }
+  var OBJ_ABAJO = [0, 1, 1.5, 2, 2.5];
+
+  // Calidad de un conjunto (0 = no vale). Misma lógica que el estilista, sin historial ni azar.
+  function calidadAn(a, b, c, u, nivel) {
+    var top = a || u; if (!top) return 0;
+    var mx = top._e, mn = top._e;
+    if (b) { if (b._e > mx) mx = b._e; if (b._e < mn) mn = b._e; }
+    if (c) { if (c._e > mx) mx = c._e; if (c._e < mn) mn = c._e; }
+    if (mx - mn >= 2) return 0;
+    if (top._v + (b ? b._v : 0) + (c ? c._v : 0) >= 2) return 0;
+    var imx = -1, imn = 99;
+    [top, b, c].forEach(function (p) { if (p && p._i >= 0) { if (p._i > imx) imx = p._i; if (p._i < imn) imn = p._i; } });
+    if (imx - imn > 1 && imx >= 0) return 0;
+    var sw = 0, ss = 0, mi = 1, s;
+    function cpk(x, y) { return x._k && x._k === y._k ? 1 : cp(x.color, y.color); }
+    if (b) { s = cpk(top, b); sw += 3; ss += 3 * s; if (s < mi) mi = s; }
+    if (c) {
+      s = cpk(c, top); sw += 1.5; ss += 1.5 * s; if (s < mi) mi = s;
+      if (b) { s = cpk(c, b); sw += 1; ss += s; if (s < mi) mi = s; }
+    }
+    if (mi < 0.5) return 0;
+    var color = sw ? ss / sw : 0.9;
+    var vivos = {}; [top, b, c].forEach(function (p) { if (p && p.color && NEUTROS.indexOf(p.color) < 0) vivos[p.color] = 1; });
+    var nv = Object.keys(vivos).length;
+    if (nv > 3) color *= 0.7; else if (nv > 2) color *= 0.85;
+    if (top._s + (b ? b._s : 0) + (c ? c._s : 0) >= 2) color *= 0.8;
+    var alto = top._c + (c ? c._c : 0), scAlto = 1 - Math.min(1, Math.abs(alto - nivel) / 2.5), termico = scAlto;
+    if (b) termico = 0.75 * scAlto + 0.25 * (1 - Math.min(1, Math.abs(b._c - OBJ_ABAJO[nivel]) / 2));
+    var tmp = (top._sc[nivel] + (b ? b._sc[nivel] : 0) + (c ? c._sc[nivel] : 0)) / (1 + (b ? 1 : 0) + (c ? 1 : 0));
+    var q = 0.5 * color + 0.25 * termico + 0.25 * tmp;
+    return (color >= 0.75 && termico >= 0.5 && q >= 0.72) ? q : 0;
+  }
+
+  function reparto(pool) {
+    function de(cats) { return pool.filter(function (p) { return cats.indexOf(p.categoria) >= 0; }); }
+    return { arribas: de(CAT_ARRIBA), abajos: de(CAT_ABAJO), capas: de(CAT_CAPA), unos: de(CAT_UNO), calcetines: de(CAT_CALCETIN), gorros: de(CAT_GORRO), calzado: de(CAT_CALZADO) };
+  }
+  function capasPara(a, P, n) {
+    if (n === 1) return [null];
+    var r = [null];
+    P.capas.forEach(function (c) {
+      if (a && (a.id === c.id || (esSJ(c) && esSJ(a)) || !capaValidaSobre(a, c))) return;
+      r.push(c);
+    });
+    return r;
+  }
+  function enumerarBases(P, n) {
+    var out = [];
+    P.arribas.forEach(function (a) {
+      P.abajos.forEach(function (b) {
+        capasPara(a, P, n).forEach(function (c) { if (calidadAn(a, b, c, null, n) > 0) out.push({ a: a, b: b, c: c, u: null }); });
+      });
+    });
+    P.unos.forEach(function (u) {
+      capasPara(null, P, n).forEach(function (c) { if (calidadAn(null, null, c, u, n) > 0) out.push({ a: null, b: null, c: c, u: u }); });
+    });
+    return out;
+  }
+  function claveCombo(a, b, c, u) { return (a ? a.id : "") + "|" + (b ? b.id : "") + "|" + (c ? c.id : "") + "|" + (u ? u.id : ""); }
+
+  // Conjuntos nuevos que crearía una prenda nueva (solo los que la incluyen)
+  function combosConNueva(cand, P, n, vistos, socios) {
+    var cnt = 0;
+    function reg(a, b, c, u) {
+      if (calidadAn(a, b, c, u, n) <= 0) return;
+      cnt++; vistos[claveCombo(a, b, c, u)] = 1;
+      [a, b, c, u].forEach(function (p) { if (p && p.id !== "__v") socios[p.id] = (socios[p.id] || 0) + 1; });
+    }
+    if (CAT_ARRIBA.indexOf(cand.categoria) >= 0) P.abajos.forEach(function (b) { capasPara(cand, P, n).forEach(function (c) { reg(cand, b, c, null); }); });
+    if (CAT_ABAJO.indexOf(cand.categoria) >= 0) P.arribas.forEach(function (a) { capasPara(a, P, n).forEach(function (c) { reg(a, cand, c, null); }); });
+    if (CAT_CAPA.indexOf(cand.categoria) >= 0 && n > 1) {
+      P.arribas.forEach(function (a) { if ((esSJ(cand) && esSJ(a)) || !capaValidaSobre(a, cand)) return; P.abajos.forEach(function (b) { reg(a, b, cand, null); }); });
+      P.unos.forEach(function (u) { reg(null, null, cand, u); });
+    }
+    return cnt;
+  }
+  // Complementos (calcetines, gorros, calzado): a cuántas de tus prendas les faltaría uno que combine
+  function gananciaComplemento(cand, tipo, P, bases, n, socios) {
+    var lista = tipo.comp === "calcetin" ? P.calcetines : tipo.comp === "gorro" ? P.gorros : P.calzado;
+    var umbral = tipo.comp === "calcetin" ? 0.65 : tipo.comp === "gorro" ? 0.75 : 0.7;
+    var cols = lista.map(function (x) { return x.color; });
+    var partners = {};
+    bases.forEach(function (it) {
+      var ref = tipo.comp === "gorro" ? (it.c || it.a || it.u) : (it.b || it.u);
+      if (!ref) return;
+      var yaTiene = cols.some(function (c) { return cp(c, ref.color) >= umbral; });
+      if (!yaTiene && cp(cand.color, ref.color) >= umbral) partners[ref.id] = 1;
+    });
+    var ids = Object.keys(partners);
+    ids.forEach(function (id) { socios[id] = (socios[id] || 0) + 1; });
+    return ids.length;
+  }
+  function grupoDe(cat) {
+    if (CAT_ARRIBA.indexOf(cat) >= 0) return { id: "arriba", txt: "partes de arriba" };
+    if (CAT_ABAJO.indexOf(cat) >= 0) return { id: "abajo", txt: "partes de abajo" };
+    if (cat === "Abrigos y chaquetas" || cat === "Chalecos" || cat === "Rebecas") return { id: "capa", txt: "abrigos, chaquetas y capas" };
+    if (cat === "Calcetines") return { id: "calc", txt: "calcetines" };
+    if (cat === "Gorros") return { id: "gorro", txt: "gorros" };
+    if (cat === "Calzado") return { id: "calzado", txt: "calzado" };
+    return { id: cat, txt: cat };
+  }
+  function solapanTemp(a, b) { return !a || !b || a === "todo el año" || b === "todo el año" || a === b; }
+
+  function tallaSupuesta(ropa, aj) {
+    if (tallaRopaEf(aj)) return tallaRopaEf(aj);
+    var c = {}, best = "", n = 0;
+    ropa.forEach(function (p) { if (p.talla && idxRopa(p.talla) >= 0) { c[p.talla] = (c[p.talla] || 0) + 1; if (c[p.talla] > n) { n = c[p.talla]; best = p.talla; } } });
+    return best;
+  }
+
+  function analizarArmario() {
+    var inv = S.inv, aj = inv.ajustes || {};
+    var ropaReal = inv.prendas.filter(function (p) { return (!p.estado || p.estado === "disponible") && p.categoria !== "Pijamas" && (p.categoria !== "Calzado" || aj.usaCalzado); });
+    var ropa = ropaReal.map(prep);
+    var talla = tallaSupuesta(ropa, aj);
+    var nivelAct = nivelAutoActual().nivel;
+    var pesos = {}; [1, 2, 3, 4].forEach(function (n) { pesos[n] = PESO_NIVEL[n] * (n === nivelAct ? 1.5 : 1); });
+    var estados = {}, virtuales = [];
+    (inv.sugerencias || []).forEach(function (x) {
+      estados[x.clave] = x.estado;
+      if (x.estado === "ya_tengo" || x.estado === "comprada") virtuales.push({ categoria: x.categoria, color: x.color, temporada: x.temp });
+    });
+    var P = {}, bases = {}, nCombos = {};
+    [1, 2, 3, 4].forEach(function (n) {
+      var pool = ropa.filter(function (p) { return p._sc[n] > 0 && tallaValida(p, aj) && !(n === 1 && p.abrigo === "calentito"); });
+      P[n] = reparto(pool); bases[n] = enumerarBases(P[n], n); nCombos[n] = bases[n].length;
+    });
+    var cuentaGrupo = {};
+    ropa.forEach(function (p) { var g = grupoDe(p.categoria).id; cuentaGrupo[g] = (cuentaGrupo[g] || 0) + 1; });
+    var conColor = ropa.filter(function (p) { return p.color; });
+    var colorPresente = {}; ropa.forEach(function (p) { if (p.color) colorPresente[p.color] = (colorPresente[p.color] || 0) + 1; });
+
+    var todos = [], mapa = {};
+    if (ropa.length >= 2) TIPOS.forEach(function (t) {
+      if (t.soloCalzado && !aj.usaCalzado) return;
+      var g = grupoDe(t.cat);
+      COLORES_CAND.forEach(function (color) {
+        var clave = t.k + "|" + color;
+        var cand = prep({ id: "__v", nombre: t.nombre, categoria: t.cat, color: color, temporada: t.temp, abrigo: t.abrigo, estilo: t.estilo,
+          talla: t.comp === "calzado" ? (aj.tallaCalzado || "") : t.comp ? "" : talla, tipo: "", tejido: "", colores2: [] });
+        var similares = ropa.concat(virtuales).filter(function (p) { return p.categoria === t.cat && p.color === color && solapanTemp(p.temporada, t.temp); }).length;
+        if (similares >= 2) return;
+        var red = similares === 1 ? 0.4 : 1;
+        var porNivel = {}, vistos = {}, socios = {}, pond = 0;
+        [1, 2, 3, 4].forEach(function (n) {
+          if (cand._sc[n] <= 0 || (n === 1 && t.abrigo === "calentito")) { porNivel[n] = 0; return; }
+          var gan, efectivo;
+          if (t.comp) {
+            gan = gananciaComplemento(cand, t, P[n], bases[n], n, socios);
+            efectivo = gan * 0.7 * ((t.comp === "calcetin" ? P[n].calcetines : t.comp === "gorro" ? P[n].gorros : P[n].calzado).length === 0 ? 1.5 : 1);
+          } else { gan = combosConNueva(cand, P[n], n, vistos, socios); efectivo = gan; }
+          porNivel[n] = gan;
+          pond += pesos[n] * (nCombos[n] === 0 && gan > 0 ? 3 : 1) * efectivo;
+        });
+        if (pond <= 0) return;
+        var tot = t.comp ? Math.max.apply(null, [1, 2, 3, 4].map(function (n) { return porNivel[n]; })) : Object.keys(vistos).length;
+        var factorCat = (cuentaGrupo[g.id] || 0) >= 6 ? 1 / (1 + 0.2 * ((cuentaGrupo[g.id] || 0) - 5)) : 1;
+        pond *= red * (colorPresente[color] ? 1 : 1.15) * factorCat;
+        var r = { clave: clave, t: t, color: color, g: g, porNivel: porNivel, tot: tot, pond: pond, socios: socios,
+          nombre: t.nombre + " (" + color.toLowerCase() + ")" };
+        todos.push(r); mapa[clave] = r;
+      });
+    });
+    todos.sort(function (a, b) { return b.pond - a.pond; });
+
+    // Los 8 mejores, sin saturar una categoría ni un color
+    var top = [], porCat = {}, porCol = {};
+    todos.forEach(function (r) {
+      if (top.length >= 8 || estados[r.clave]) return;
+      if ((porCat[r.t.cat] || 0) >= 2 || (porCol[r.color] || 0) >= 3) return;
+      top.push(r); porCat[r.t.cat] = (porCat[r.t.cat] || 0) + 1; porCol[r.color] = (porCol[r.color] || 0) + 1;
+    });
+
+    // Explicaciones y prendas reales con las que combina
+    todos.forEach(function (r) { /* se calculan al pintar solo las que se muestran */ });
+    function explicar6(r) {
+      var m = [], t = r.t;
+      var vacios = [4, 3, 2, 1].filter(function (n) { return nCombos[n] === 0 && r.porNivel[n] > 0; });
+      if (vacios.length) m.push("Ahora mismo no puedes formar ningún conjunto completo para días «" + NIVEL_NOMBRE[vacios[0]] + "»: esta prenda lo permitiría.");
+      if (t.comp) m.push("Combina bien con " + Object.keys(r.socios).length + " de tus prendas" + ((cuentaGrupo[r.g.id] || 0) === 0 ? " y no tienes ninguna de este tipo." : "."));
+      else m.push("Crearía " + r.tot + (r.tot === 1 ? " conjunto nuevo" : " conjuntos nuevos") + " con lo que ya tienes.");
+      var cg = cuentaGrupo[r.g.id] || 0;
+      if (!t.comp && cg === 0) m.push("No tienes ninguna prenda de " + r.g.txt + ".");
+      else if (!t.comp && cg === 1) m.push("Solo tienes 1 de " + r.g.txt + ".");
+      if (!colorPresente[r.color]) {
+        var buenos = conColor.filter(function (p) { return cp(r.color, p.color) >= 0.85; }).length;
+        if (conColor.length) m.push("No tienes nada de color " + r.color.toLowerCase() + " y combina con " + buenos + " de tus " + conColor.length + " prendas con color.");
+      }
+      var mejorN = [1, 2, 3, 4].sort(function (a, b) { return r.porNivel[b] * pesos[b] - r.porNivel[a] * pesos[a]; })[0];
+      m.push("Sobre todo útil para días «" + NIVEL_NOMBRE[mejorN] + "»" + (mejorN === nivelAct ? ", como los de ahora en Cartagena." : " en Cartagena."));
+      return m.slice(0, 4);
+    }
+    // Colores que faltan
+    var faltan = [];
+    if (conColor.length >= 3) COLORES_CAND.forEach(function (c) {
+      if (colorPresente[c]) return;
+      var n = conColor.filter(function (p) { return cp(c, p.color) >= 0.85; }).length;
+      if (n / conColor.length >= 0.5) faltan.push({ color: c, n: n });
+    });
+    faltan.sort(function (a, b) { return b.n - a.n; });
+    var realesPorId = {}; inv.prendas.forEach(function (p) { realesPorId[p.id] = p; });
+    return { ropa: ropa, nCombos: nCombos, cuentaGrupo: cuentaGrupo, colorPresente: colorPresente, conColor: conColor.length, sinColor: ropa.length - conColor.length,
+      todos: todos, mapa: mapa, top: top, estados: estados, faltan: faltan.slice(0, 5), explicar: explicar6, realesPorId: realesPorId, nivelAct: nivelAct, aj: aj, talla: talla };
+  }
+
+  function metaDe(r) {
+    return { clave: r.clave, k: r.t.k, nombre: r.nombre, categoria: r.t.cat, color: r.color, temp: r.t.temp, abrigo: r.t.abrigo, estilo: r.t.estilo, sil: r.t.sil };
+  }
+
+  function htmlSugerencia(r, ana, numero) {
+    var motivos = ana.explicar(r);
+    var ids = Object.keys(r.socios).sort(function (a, b) { return r.socios[b] - r.socios[a]; }).slice(0, 6);
+    var reales = ids.map(function (id) { return ana.realesPorId[id]; }).filter(Boolean);
+    var h = '<div class="sug" data-clave="' + esc(r.clave) + '">'
+      + '<div class="sug-cab"><span class="sello">SUGERENCIA' + (numero ? " Nº " + numero : "") + '</span>'
+      + '<span class="chip">' + (r.t.comp ? "Combina con " + Object.keys(r.socios).length : "+" + r.tot + (r.tot === 1 ? " conjunto" : " conjuntos")) + "</span></div>"
+      + '<div class="sug-fila"><div class="sug-ilus"><div class="caja">' + svgPrenda(r.t.sil, r.color) + "</div><small>Imagen orientativa</small></div>"
+      + '<div><div class="sug-nombre">' + esc(r.nombre) + '</div><div class="nota" style="margin:4px 0 0">' + esc(r.t.cat) + "</div></div></div>"
+      + '<ul class="razones">' + motivos.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
+    if (reales.length) {
+      h += '<div class="grupo-tit">Combinaría con tus prendas reales</div><div class="mini-grid reales">'
+        + reales.map(function (p) { return '<figure><div class="im"><img alt="" data-mini="' + esc(p.id) + '"></div><figcaption><span class="cap-nom">' + esc(p.nombre) + "</span></figcaption></figure>"; }).join("") + "</div>";
+    }
+    h += botonesSugerencia(r.clave, "nueva");
+    return h + "</div>";
+  }
+  function botonesSugerencia(clave, estado) {
+    var c = ' data-c="' + esc(clave) + '"';
+    if (estado === "nueva" || estado === "interesa")
+      return '<div class="sug-btns">' + (estado === "nueva" ? '<button class="btn" data-sg="interesa"' + c + ">Me interesa</button>" : '<button class="btn" data-sg="comprada"' + c + ">Comprada</button>")
+        + '<button class="btn sec" data-sg="ya_tengo"' + c + ">Ya la tengo</button>"
+        + '<button class="btn sec" data-sg="no_interesa"' + c + ">No me interesa</button>"
+        + (estado === "nueva" ? '<button class="btn sec" data-sg="comprada"' + c + ">Comprada</button>" : '<button class="btn sec" data-sg="quitar"' + c + ">Quitar de la lista</button>") + "</div>";
+    if (estado === "comprada" || estado === "ya_tengo")
+      return '<div class="sug-btns"><button class="btn" data-sg="anadir"' + c + '>Añadir a mi armario</button><button class="btn sec" data-sg="quitar"' + c + ">Quitar marca</button></div>";
+    return '<div class="sug-btns"><button class="btn sec" data-sg="quitar"' + c + ">Volver a sugerir</button></div>";
+  }
+  function tarjetaGuardada(x) {
+    return '<div class="sug" data-clave="' + esc(x.clave) + '"><div class="sug-fila"><div class="sug-ilus"><div class="caja">' + svgPrenda(x.sil || "camiseta", x.color) + "</div><small>Imagen orientativa</small></div>"
+      + '<div><div class="sug-nombre">' + esc(x.nombre) + '</div><div class="nota" style="margin:4px 0 0">' + esc(x.categoria) + "</div></div></div>" + botonesSugerencia(x.clave, x.estado) + "</div>";
+  }
+
+  function renderCompletar() {
+    var el = $("completarCuerpo");
+    el.innerHTML = '<div class="card"><p class="nota" style="margin:0">Analizando tu armario…</p></div>';
+    setTimeout(function () {
+      var ana;
+      try { ana = analizarArmario(); } catch (e) { el.innerHTML = '<div class="aviso-caja">No se pudo analizar el armario: ' + esc(e.message) + "</div>"; return; }
+      ANA = ana;
+      pintarCompletar(ana);
+    }, 30);
+  }
+
+  function pintarCompletar(ana) {
+    var el = $("completarCuerpo"), aj = ana.aj;
+    var h = '<p class="nota">Aquí tienes ideas de compra: <b>las que llevan borde discontinuo y el sello SUGERENCIA no son tuyas</b>, son prendas que te convendría tener. Las fotos de las prendas con borde verde son tu ropa real. Las ilustraciones son solo orientativas.</p>';
+    if (ana.ropa.length < 2) {
+      el.innerHTML = h + '<div class="vacio-caja">Para poder recomendarte algo necesito conocer tu armario. Añade al menos 2 prendas en la pestaña <b>Añadir</b>.</div>';
+      return;
+    }
+    // Resumen
+    function fila(txt, n, minimo) { return '<div class="barra"><span>' + txt + "</span><b class=\"" + (n === 0 ? "cero" : n <= minimo ? "poco" : "") + '">' + (n === 0 ? "ninguna" : n) + (n > 0 && n <= minimo ? " · pocas" : "") + "</b></div>"; }
+    var g = ana.cuentaGrupo;
+    h += '<div class="card"><h2>Resumen de tu armario</h2>'
+      + fila("Partes de arriba", g.arriba || 0, 2) + fila("Partes de abajo", g.abajo || 0, 2) + fila("Abrigos, chaquetas y capas", g.capa || 0, 1)
+      + fila("Calcetines", g.calc || 0, 1) + fila("Gorros", g.gorro || 0, 0) + (aj.usaCalzado ? fila("Calzado", g.calzado || 0, 0) : "")
+      + '<p class="grupo-tit" style="margin-top:12px">Conjuntos posibles según el tiempo</p>';
+    [[1, "Días de calor"], [2, "Días templados"], [3, "Días frescos"], [4, "Días de frío"]].forEach(function (x) {
+      var n = ana.nCombos[x[0]];
+      h += '<div class="barra"><span>' + x[1] + (x[0] === ana.nivelAct ? " (ahora)" : "") + '</span><b class="' + (n === 0 ? "cero" : n < 4 ? "poco" : "") + '">' + (n === 0 ? "ninguno" : n) + "</b></div>";
+    });
+    h += '<p class="nota" style="margin:8px 0 0">Cuento combinaciones de arriba, abajo y capa que quedan bien juntas (sin calzado ni complementos).'
+      + (ana.sinColor ? " " + ana.sinColor + " prendas no tienen color indicado: las he contado como si combinaran." : "") + "</p></div>";
+    h += htmlMarcasYPrestadas();
+    // Colores
+    var cols = Object.keys(ana.colorPresente).sort(function (a, b) { return ana.colorPresente[b] - ana.colorPresente[a]; });
+    h += '<div class="card"><h2>Colores</h2>';
+    if (cols.length) h += "<div>" + cols.map(function (c) { return '<span class="sw"><i style="background:' + colorHex(c) + '"></i>' + esc(c) + " (" + ana.colorPresente[c] + ")</span>"; }).join("") + "</div>";
+    else h += '<p class="nota">Indica el color de tus prendas (en Editar › Más detalles) para recomendarte colores.</p>';
+    if (ana.faltan.length) h += '<p class="grupo-tit" style="margin-top:10px">Colores que aportarían variedad y combinan con muchas de tus prendas</p><div>'
+      + ana.faltan.map(function (f) { return '<span class="sw"><i style="background:' + colorHex(f.color) + '"></i>' + esc(f.color) + " (combina con " + f.n + " de " + ana.conColor + ")</span>"; }).join("") + "</div>";
+    h += "</div>";
+
+    // Lista de la compra
+    var guardadas = S.inv.sugerencias || [];
+    var interesa = guardadas.filter(function (x) { return x.estado === "interesa"; });
+    if (interesa.length) h += '<h3 style="margin:18px 2px 8px">Mi lista de la compra</h3>' + interesa.map(tarjetaGuardada).join("");
+    // Sugerencias
+    h += '<h3 style="margin:18px 2px 8px">Qué conseguir primero</h3>';
+    if (!ana.top.length) h += '<div class="vacio-caja">Con lo que tienes, ahora mismo no veo ninguna compra que aporte mucho más. Si quieres más ideas, añade más prendas o revisa lo que has descartado.</div>';
+    ana.top.forEach(function (r, i) { h += htmlSugerencia(r, ana, i + 1); });
+    // Compradas / ya la tengo / descartadas
+    var cmp = guardadas.filter(function (x) { return x.estado === "comprada" || x.estado === "ya_tengo"; });
+    var desc = guardadas.filter(function (x) { return x.estado === "no_interesa"; });
+    if (cmp.length) h += '<details class="mas" style="margin-top:14px"><summary>Compradas o ya las tengo (' + cmp.length + ')</summary><div class="dentro"><p class="nota">Añádelas con foto para que el estilista las use.</p>' + cmp.map(tarjetaGuardada).join("") + "</div></details>";
+    if (desc.length) h += '<details class="mas"><summary>Descartadas (' + desc.length + ')</summary><div class="dentro">' + desc.map(tarjetaGuardada).join("") + "</div></details>";
+    el.innerHTML = h;
+    cargarMinis(el);
+  }
+
+  async function marcarSugerencia(clave, estado) {
+    var r = ANA && ANA.mapa[clave];
+    var previa = (S.inv.sugerencias || []).find(function (x) { return x.clave === clave; });
+    var meta = r ? metaDe(r) : previa;
+    if (!meta) return;
+    meta = Object.assign({}, meta);
+    try {
+      await modificarInv(function (inv) {
+        inv.sugerencias = inv.sugerencias.filter(function (x) { return x.clave !== clave; });
+        if (estado) inv.sugerencias.push(Object.assign(meta, { clave: clave, estado: estado, fecha: new Date().toISOString() }));
+      });
+      renderCompletar();
+      toast({ interesa: "Añadida a tu lista de la compra", ya_tengo: "Anotado: ya la tienes. Añádela con foto cuando quieras", no_interesa: "Descartada", comprada: "Marcada como comprada. Añádela con foto cuando quieras" }[estado] || "Hecho");
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+  function precargarDesdeSugerencia(clave) {
+    var x = (S.inv.sugerencias || []).find(function (y) { return y.clave === clave; });
+    if (!x) return;
+    prepararFormulario(null);
+    $("fNombre").value = x.nombre;
+    llenarCategoriasForm(x.categoria); $("fCategoria").value = x.categoria;
+    F.color = x.color; pintarColores($("coloresP"), F.color, false); $("nomColorP").textContent = F.color;
+    $("fTemp2").value = x.temp || "";
+    F.abrigo = x.abrigo || ""; pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
+    F.estilo = x.estilo || ""; pintarPares($("segEstilo"), ESTILOS, F.estilo);
+    $("masDetalles").open = true;
+    S.tab = "anadir"; pantalla("vAnadir"); marcarTab("anadir");
+    toast("Hazle una foto y guarda la prenda");
+  }
+
+  function pintarPares(cont, pares, actual) {
+    cont.innerHTML = "";
+    pares.forEach(function (p) {
+      var b = document.createElement("button");
+      b.type = "button"; b.setAttribute("data-v", p[0]); b.textContent = p[1];
+      if (p[0] === actual) b.classList.add("on");
+      cont.appendChild(b);
+    });
+  }
+  function pintarControlesConjuntos() {
+    pintarPares($("segDia"), [["0", "Hoy"], ["1", "Mañana"]], String(C.dia));
+    pintarPares($("segModo"), MODOS, C.modo);
+    pintarPares($("segNivel"), NIVELES, C.nivel);
+    var nota = "";
+    if (C.modo === "frio") nota = "Con «Días fríos» se usa siempre el nivel Frío.";
+    else if (C.modo === "calor") nota = "Con «Días calurosos» se usa siempre el nivel Calor.";
+    else if (C.nivel === "auto") {
+      var au = nivelAutoActual();
+      if (au.fuente === "auto_tiempo") nota = "Según el tiempo previsto, lo trato como un día «" + NIVEL_NOMBRE[au.nivel] + "».";
+      else nota = "No tengo el tiempo ahora mismo, así que uso la época del año (día «" + NIVEL_NOMBRE[au.nivel] + "»). Puedes elegirlo a mano.";
+    }
+    $("notaNivel").textContent = nota;
+  }
+  function prepararConjuntos() {
+    pintarControlesConjuntos();
+    pintarTiempo();
+    cargarTiempo(false);
+    pintarAjustesJuan();
+  }
+  function pintarAjustesJuan() {
+    var aj = S.inv.ajustes || {};
+    $("fNacimiento").value = aj.nacimiento || "";
+    llenarSelect($("selTallaRopa"), mesesDe(aj.nacimiento) !== null ? "Automática (según su edad)" : "Sin indicar", TALLAS.filter(function (t) { return !/^Calzado/.test(t) && t !== "Talla única"; }), aj.tallaRopa);
+    $("selTallaRopa").insertAdjacentHTML("beforeend", '<optgroup label="Altura (cm)">' + TALLAS_CM.map(function (x) { return '<option value="' + x + '">' + x + "</option>"; }).join("") + "</optgroup>");
+    $("selTallaRopa").value = aj.tallaRopa || "";
+    llenarSelect($("selTallaCalzado"), "Sin indicar", TALLAS.filter(function (t) { return /^Calzado/.test(t); }), aj.tallaCalzado);
+    $("selUsaCalzado").value = aj.usaCalzado ? "si" : "no";
+    pintarNotaEdad(aj);
+  }
+  function pintarNotaEdad(aj) {
+    var m = mesesDe(aj.nacimiento), el = $("notaEdad");
+    el.textContent = m === null ? "Con su fecha de nacimiento calculo su talla por edad. Si quieres otra, elígela abajo y mandará esa." : "Juan tiene " + textoEdad(m) + ". Talla por edad: " + tallaPorMeses(m) + (aj.tallaRopa ? " (ahora usas la que has elegido: " + aj.tallaRopa + ")." : ".");
+  }
+  async function guardarAjuste(clave, valor) {
+    try {
+      await modificarInv(function (inv) { inv.ajustes = Object.assign({ tallaRopa: "", tallaCalzado: "", usaCalzado: false, nacimiento: "" }, inv.ajustes); inv.ajustes[clave] = valor; });
+      toast("Guardado ✓");
+      pintarAjustesJuan();
+    } catch (e) { toast("No se pudo guardar el ajuste"); }
+  }
+
+  // ================== Eventos ==================
+  function eventos() {
+    // Completar mi armario
+    $("completarCuerpo").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-sg]"); if (!b) return;
+      var acc = b.getAttribute("data-sg"), clave = b.getAttribute("data-c");
+      if (acc === "anadir") precargarDesdeSugerencia(clave);
+      else marcarSugerencia(clave, acc === "quitar" ? null : acc);
+    });
+    // Calendario
+    $("calAnt").addEventListener("click", function () { K.mes = new Date(K.mes.getFullYear(), K.mes.getMonth() - 1, 1); renderCalendario(); });
+    $("calSig").addEventListener("click", function () { K.mes = new Date(K.mes.getFullYear(), K.mes.getMonth() + 1, 1); renderCalendario(); });
+    $("calGrid").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-f]"); if (!b) return;
+      K.sel = b.getAttribute("data-f"); renderCalendario();
+    });
+    $("segStats").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      K.stats = b.getAttribute("data-v"); renderStats();
+    });
+    $("calDia").addEventListener("click", async function (e) {
+      var b = e.target.closest("[data-cal]"); if (!b) return;
+      var acc = b.getAttribute("data-cal"), f = K.sel;
+      var ent = S.inv.calendario.find(function (x) { return x.fecha === f; });
+      if (acc === "nuevo") abrirSelector(f, []);
+      else if (acc === "editar" && ent) abrirSelector(f, ent.prendas);
+      else if (acc === "favorito") abrirListaFavoritos(f);
+      else if (acc === "fav" && ent) guardarFavorito(ent.prendas);
+      else if (acc === "borrar" && ent) {
+        if (!confirm("¿Eliminar el conjunto del " + fechaCorta(f) + "?")) return;
+        try {
+          await modificarInv(function (inv) { inv.calendario = inv.calendario.filter(function (x) { return x.fecha !== f; }); });
+          renderCalendario(); toast("Eliminado");
+        } catch (er) { toast("No se pudo eliminar: " + er.message); }
+      }
+    });
+    $("fondo2").addEventListener("click", async function (e) {
+      if (e.target === $("fondo2")) { cerrarOverlay2(); return; }
+      var s = e.target.closest("[data-sel]");
+      if (s) { if (s.getAttribute("data-sel") === "cerrar") cerrarOverlay2(); else guardarSelector(); return; }
+      var el = e.target.closest("[data-elegir]");
+      if (el) {
+        var c = S.inv.conjuntos.find(function (x) { return x.id === el.getAttribute("data-elegir"); });
+        var f = el.getAttribute("data-fecha"); if (!c) return;
+        try {
+          await guardarEnCalendario(f, c.prendas, "favorito");
+          cerrarOverlay2(); K.sel = f; renderCalendario(); toast("Conjunto guardado ✓");
+        } catch (er) { toast("No se pudo guardar: " + er.message); }
+        return;
+      }
+      var p = e.target.closest(".selp");
+      if (p && PK) {
+        var id = p.getAttribute("data-id"), i = PK.ids.indexOf(id);
+        if (i >= 0) PK.ids.splice(i, 1); else PK.ids.push(id);
+        p.classList.toggle("on", i < 0); actualizarBtnSel();
+      }
+    });
+    $("fondo2").addEventListener("change", function (e) {
+      if (e.target.id === "selCat" && PK) { PK.cat = e.target.value; pintarSelector(); }
+    });
+    // Favoritos
+    $("segFav").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      FV.vista = b.getAttribute("data-v"); renderFavoritos();
+    });
+    $("favCuerpo").addEventListener("click", function (e) {
+      var f = e.target.closest("[data-fav]");
+      if (f) { e.stopPropagation(); alternarFav(f.getAttribute("data-fav")); return; }
+      var fc = e.target.closest("[data-fc]");
+      if (fc) { accionFavorito(fc.closest("[data-cid]").getAttribute("data-cid"), fc.getAttribute("data-fc")); return; }
+      var t = e.target.closest(".tarjeta");
+      if (t) abrirDetalle(t.getAttribute("data-id"));
+    });
+    $("btnTiempo").addEventListener("click", function () { cargarTiempo(true); });
+    $("segDia").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      C.dia = parseInt(b.getAttribute("data-v"), 10); C.vistos = {}; C.resultados = [];
+      $("resultados").innerHTML = ""; $("btnCrear").textContent = "Crear conjuntos";
+      pintarControlesConjuntos(); pintarTiempo();
+    });
+    $("segModo").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      C.modo = b.getAttribute("data-v"); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarControlesConjuntos(); pintarTiempo();
+    });
+    $("segNivel").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      C.nivel = b.getAttribute("data-v"); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarControlesConjuntos(); pintarTiempo();
+    });
+    $("selTallaRopa").addEventListener("change", function (e) { guardarAjuste("tallaRopa", e.target.value); });
+    $("fNacimiento").addEventListener("change", function (e) { guardarAjuste("nacimiento", e.target.value); });
+    $("selTallaCalzado").addEventListener("change", function (e) { guardarAjuste("tallaCalzado", e.target.value); });
+    $("selUsaCalzado").addEventListener("change", function (e) { guardarAjuste("usaCalzado", e.target.value === "si"); });
+    $("btnCrear").addEventListener("click", crearConjuntos);
+    $("resultados").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-hoy]"); if (b) { guardarHoy(parseInt(b.getAttribute("data-hoy"), 10)); return; }
+      var f = e.target.closest("[data-favc]");
+      if (f && C.resultados[parseInt(f.getAttribute("data-favc"), 10)]) guardarFavorito(C.resultados[parseInt(f.getAttribute("data-favc"), 10)].ids);
+    });
+
+    $("btnCopiaDropbox").addEventListener("click", copiaDropbox);
+    $("btnCopiaDescargar").addEventListener("click", copiaDescargar);
+    $("btnCopiaRestaurar").addEventListener("click", function () { $("fileRestaurar").value = ""; $("fileRestaurar").click(); });
+    $("fileRestaurar").addEventListener("change", function () { if (this.files[0]) restaurarArchivo(this.files[0]); });
+    $("btnConectar").addEventListener("click", iniciarConexion);
+    $("btnSalir").addEventListener("click", function () {
+      if (!confirm("¿Desconectar de Dropbox en este navegador? Tus prendas y fotos siguen guardadas en Dropbox.")) return;
+      borrarLS(K_REFRESH); accessToken = null; S.inv = null;
+      $("msgConexion").textContent = "Desconectado. Pulsa el botón para volver a entrar.";
+      pantalla("vConectar");
+    });
+
+    $("nav").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var tab = b.getAttribute("data-tab");
+      if (b.classList.contains("pronto")) { toast("Esta sección llegará en la fase " + b.getAttribute("data-fase") + "."); return; }
+      if (tab === "anadir" && S.editId) prepararFormulario(null);
+      if (tab === "armario" && S.editId) S.editId = null;
+      irA(tab);
+    });
+
+    $("busca").addEventListener("input", function (e) { S.filtros.texto = e.target.value; renderArmario(); });
+    [["fCat", "cat"], ["fTalla", "talla"], ["fColor", "color"], ["fTemp", "temp"], ["fFav", "fav"], ["fOrigen", "origen"]].forEach(function (par) {
+      $(par[0]).addEventListener("change", function (e) { S.filtros[par[1]] = e.target.value; renderArmario(); });
+    });
+    $("btnLimpiar").addEventListener("click", function () {
+      S.filtros = { texto: "", cat: "", talla: "", color: "", temp: "", fav: "", origen: "" };
+      $("busca").value = ""; prepararFiltros(); renderArmario();
+    });
+
+    $("grid").addEventListener("click", function (e) {
+      var f = e.target.closest("[data-fav]");
+      if (f) { e.stopPropagation(); alternarFav(f.getAttribute("data-fav")); return; }
+      var t = e.target.closest(".tarjeta");
+      if (t) abrirDetalle(t.getAttribute("data-id"));
+    });
+
+    $("fondo").addEventListener("click", function (e) {
+      if (e.target === $("fondo")) { cerrarDetalle(); return; }
+      var b = e.target.closest("[data-acc]"); if (!b) return;
+      var acc = b.getAttribute("data-acc"), id = b.getAttribute("data-id");
+      if (acc === "cerrar") cerrarDetalle();
+      if (acc === "fav") { alternarFav(id).then(function () { if (!$("fondo").hidden) abrirDetalle(id); }); }
+      if (acc === "eliminar") eliminarPrenda(id);
+      if (acc === "devuelta") marcarDevuelta(id);
+      if (acc === "ver") abrirDetalle(id);
+      if (acc === "favconj") guardarConjuntoComprado(id);
+      if (acc === "editar") {
+        var p = S.inv.prendas.find(function (x) { return x.id === id; });
+        cerrarDetalle(); prepararFormulario(p); irA("anadir");
+        descargar(p.miniatura).then(function (bl) {
+          if (bl && S.editId === id && !F.foto) { var im = $("fotoPrev"); im.src = URL.createObjectURL(bl); im.hidden = false; $("foto-vacia").hidden = true; $("cambiarFoto").hidden = false; }
+        }).catch(function () {});
+      }
+    });
+
+    $("fFile").addEventListener("change", function (e) {
+      var file = e.target.files && e.target.files[0]; if (!file) return;
+      F.foto = file;
+      var im = $("fotoPrev"); im.src = URL.createObjectURL(file); im.hidden = false;
+      $("foto-vacia").hidden = true; $("cambiarFoto").hidden = false;
+      $("errForm").textContent = "";
+    });
+    $("fTalla2").addEventListener("change", function (e) {
+      var otra = e.target.value === "__otra";
+      $("fTallaOtra").hidden = !otra; if (otra) $("fTallaOtra").focus();
+    });
+    $("coloresP").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var c = b.getAttribute("data-c");
+      F.color = F.color === c ? "" : c;
+      pintarColores($("coloresP"), F.color, false); $("nomColorP").textContent = F.color;
+    });
+    $("coloresS").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var c = b.getAttribute("data-c"), i = F.colores2.indexOf(c);
+      if (i >= 0) F.colores2.splice(i, 1); else F.colores2.push(c);
+      pintarColores($("coloresS"), F.colores2, true);
+    });
+    $("segAbrigo").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var v = b.getAttribute("data-v");
+      F.abrigo = F.abrigo === v ? "" : v;
+      pintarSeg($("segAbrigo"), ABRIGOS, F.abrigo);
+    });
+    $("segEstilo").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var v = b.getAttribute("data-v");
+      F.estilo = F.estilo === v ? "" : v;
+      pintarPares($("segEstilo"), ESTILOS, F.estilo);
+    });
+    $("segAjuste").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var v = b.getAttribute("data-v"); F.ajuste = F.ajuste === v ? "" : v; pintarAjusteOrigen();
+    });
+    $("segOrigen").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      F.origen = b.getAttribute("data-v"); pintarAjusteOrigen();
+    });
+    conectarListaSel("fMarca", "fMarcaOtro", mostrarNotaMarca);
+    conectarListaSel("fTejido", "fTejidoOtro");
+    $("fConjunto").addEventListener("change", function () {
+      var v = $("fConjunto").value, ex = v === "__existente";
+      $("fConjuntoPieza").hidden = !ex;
+      $("fConjuntoOtro").hidden = !(v === "__otra" || ex);
+      $("fConjuntoOtro").placeholder = ex ? "Nombre del conjunto, ej.: Chándal azul" : "Nombre del conjunto, ej.: Chándal azul";
+      if (v === "__otra" || ex) { if (ex) $("fConjuntoPieza").focus(); else $("fConjuntoOtro").focus(); }
+    });
+    $("fConjuntoPieza").addEventListener("change", function () {
+      var q = piezaEnlazada(); if (q && q.conjunto) $("fConjuntoOtro").value = q.conjunto;
+    });
+    conectarListaSel("fPrestadaDe", "fPrestadaOtro");
+    $("btnFavForm").addEventListener("click", function () { F.favorito = !F.favorito; pintarFavForm(); });
+    $("btnGuardar").addEventListener("click", function () { guardarPrenda(false); });
+    $("btnGuardarOtra").addEventListener("click", function () { guardarPrenda(true); });
+    $("btnCancelar").addEventListener("click", function () { S.editId = null; irA("armario"); });
+  }
+
+  // ================== Inicio ==================
+  async function entrar() {
+    pantalla("vCargando"); $("txtCargando").textContent = "Cargando tu armario…";
+    try {
+      S.inv = await leerInventario();
+      prepararFiltros();
+      prepararFormulario(null);
+      irA("armario");
+    } catch (e) {
+      pantalla("vConectar");
+      $("msgConexion").textContent = "No se pudo cargar el armario: " + e.message + " Pulsa el botón para volver a conectar.";
+    }
+  }
+
+  async function iniciar() {
+    eventos();
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get("code"), errOAuth = params.get("error");
+
+    if (errOAuth) {
+      history.replaceState(null, "", REDIRECT_URI);
+      pantalla("vConectar");
+      $("msgConexion").textContent = "Dropbox no ha concedido el permiso. " + (params.get("error_description") || "");
+      return;
+    }
+    if (code) {
+      pantalla("vCargando"); $("txtCargando").textContent = "Terminando la conexión…";
+      try {
+        await terminarConexion(code, params.get("state"));
+        history.replaceState(null, "", REDIRECT_URI);
+        await entrar();
+      } catch (e) {
+        history.replaceState(null, "", REDIRECT_URI);
+        pantalla("vConectar"); $("msgConexion").textContent = "No se pudo conectar: " + e.message;
+      }
+      return;
+    }
+    if (leerLS(K_REFRESH)) { await entrar(); }
+    else { pantalla("vConectar"); }
+  }
+
+  iniciar();
+})();
+</script>
+</body>
+</html>
