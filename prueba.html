@@ -122,6 +122,9 @@
   details.mas summary { padding: 14px; font-size: 15px; font-weight: 600; color: var(--marron); list-style: none; }
   details.mas summary::-webkit-details-marker { display: none; }
   details.mas .dentro { padding: 0 14px 6px; }
+  .sugnombre { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .sugnombre button { border: 1px solid var(--linea); background: var(--blanco); border-radius: 999px; padding: 7px 13px; font-size: 14.5px; color: var(--texto); }
+  .sugnombre button.entero { border-color: var(--salvia); color: var(--salvia); font-weight: 600; }
   .seg { display: flex; gap: 8px; flex-wrap: wrap; }
   .seg button { flex: 1; min-width: 80px; padding: 11px 6px; border-radius: 12px; border: 1px solid var(--linea); background: var(--blanco); color: var(--texto); font-size: 14px; }
   .seg button.on { background: var(--salvia); border-color: var(--salvia); color: #fff; font-weight: 600; }
@@ -280,6 +283,7 @@
     <div class="campo">
       <label for="fNombre">Nombre <span class="req">*</span></label>
       <input type="text" id="fNombre" placeholder="Ej.: Camiseta blanca de rayas" autocomplete="off" maxlength="80">
+      <div id="sugNombre" class="sugnombre" hidden></div>
     </div>
 
     <div class="campo">
@@ -406,7 +410,7 @@
   var K_STATE = "armario_pkce_state";
 
   var CATS_BASE = ["Camisetas y partes de arriba", "Bodies", "Pantalones y partes de abajo", "Petos", "Sudaderas", "Jerséis", "Rebecas", "Camisas",
-    "Conjuntos", "Monos", "Abrigos y chaquetas", "Chalecos", "Pijamas", "Calzado", "Calcetines", "Gorros", "Accesorios"];
+    "Conjuntos", "Monos", "Abrigos y chaquetas", "Chalecos", "Pijamas", "Calzado", "Calcetines", "Calcetas", "Gorros", "Accesorios"];
   var TALLAS = ["0-3 meses", "3-6 meses", "6-9 meses", "9-12 meses", "12-18 meses", "18-24 meses",
     "2 años", "3 años", "4 años", "5 años", "6 años", "7 años", "8 años", "9 años", "10 años", "11 años", "12 años",
     "Calzado 18", "Calzado 19", "Calzado 20", "Calzado 21", "Calzado 22", "Calzado 23", "Calzado 24", "Calzado 25",
@@ -990,6 +994,64 @@
     });
     $(otroId).addEventListener("input", function () { if (alCambiar) alCambiar(); });
   }
+
+  // ---- Sugerencias al escribir el nombre de la prenda
+  var VOC_PRENDAS = ["camiseta", "body", "pantalón", "sudadera", "jersey", "chaqueta", "peto", "pijama", "rebeca", "camisa", "chaleco", "abrigo", "calcetines", "calcetas", "gorro", "zapatos", "mono", "vestido", "bufanda", "pantalón corto", "ranita"];
+  var VOC_DETALLES = ["manga larga", "manga corta", "sin mangas", "cuello redondo", "cuello alto", "cuello pico", "de rayas", "de lunares", "de cuadros", "estampado", "con dibujo", "liso", "con capucha", "con botones", "con cremallera", "con bolsillos", "de punto", "de felpa", "vaquero", "de pana", "de algodón", "de lana", "polar", "acolchado", "con volantes", "con estampado", "con letras", "de fiesta", "de vestir", "de chándal"];
+  function femenino(texto) { var w = norm(texto).trim().split(/\s+/)[0] || ""; return /(a|ana|eta|era|isa)$/.test(w) && !/^(pijama|body|peto|mono|gorro|abrigo|jersey|chaleco|pantalon)$/.test(w); }
+  function sugerenciasNombre(val) {
+    var vacio = !val.trim(), finEsp = /\s$/.test(val), frag = (vacio || finEsp) ? "" : val.split(/\s+/).pop(), prefijo = val.slice(0, val.length - frag.length);
+    var out = [], vistos = {}, nVal = norm(val).trim();
+    function add(txt, entero) { var k = norm(txt); if (!k || vistos[k]) return; vistos[k] = 1; out.push({ t: txt, entero: !!entero }); }
+    var nombres = ((S.inv && S.inv.prendas) || []).map(function (p) { return p.nombre || ""; });
+    // tus nombres anteriores que empiezan igual (para repetir uno parecido)
+    if (nVal.length >= 2) nombres.forEach(function (n) { if (out.filter(function (o) { return o.entero; }).length < 2 && norm(n).indexOf(nVal) === 0 && norm(n) !== nVal) add(n, true); });
+    var palabras = {};
+    nombres.forEach(function (n) { norm(n).split(/\s+/).forEach(function (w) { if (w.length >= 3) palabras[w] = (palabras[w] || 0) + 1; }); });
+    var usadas = norm(val);
+    var cuentaCol = {};
+    ((S.inv && S.inv.prendas) || []).forEach(function (p) { var k = (p.color || "").toLowerCase(); if (k) cuentaCol[k] = (cuentaCol[k] || 0) + 1; });
+    var cols = COLORES.map(function (c) { return c[0].toLowerCase(); }).filter(function (c) { return c !== "multicolor"; });
+    cols = cols.map(function (c, i) { return { c: c, i: i }; }).sort(function (x, y) { return (cuentaCol[y.c] || 0) - (cuentaCol[x.c] || 0) || x.i - y.i; }).map(function (x) { return x.c; });
+    var fem = femenino(val);
+    function color(c) { return fem && /o$/.test(c) ? c.replace(/o$/, "a") : c; }
+    var cand = [];
+    if (vacio) VOC_PRENDAS.forEach(function (x) { cand.push(x); });
+    else if (frag) {
+      var nf = norm(frag);
+      var base = prefijo.trim() ? [] : VOC_PRENDAS;
+      base.concat(VOC_DETALLES, cols.map(color)).forEach(function (x) { if (norm(x).indexOf(nf) === 0 && norm(x) !== nf) cand.push(x); });
+      Object.keys(palabras).sort(function (a, b) { return palabras[b] - palabras[a]; }).forEach(function (w) { if (w.indexOf(nf) === 0 && w !== nf) cand.push(w); });
+    } else {
+      var cc = cols.map(color);
+      VOC_DETALLES.slice(0, 5).concat(cc.slice(0, 6), VOC_DETALLES.slice(5), cc.slice(6)).forEach(function (x) { cand.push(x); });
+    }
+    cand.forEach(function (x) { if (out.length < 12 && (frag || !new RegExp("\\b" + norm(x).replace(/[.*+?^${}()|[\]\\]/g, "") + "\\b").test(usadas))) add(x); });
+    return { prefijo: prefijo, lista: out.slice(0, 12) };
+  }
+  function pintarSugNombre() {
+    var inp = $("fNombre"), box = $("sugNombre");
+    if (document.activeElement !== inp) { box.hidden = true; return; }
+    var r = sugerenciasNombre(inp.value);
+    if (!r.lista.length) { box.hidden = true; return; }
+    box.innerHTML = r.lista.map(function (o, i) { return '<button type="button" data-i="' + i + '"' + (o.entero ? ' class="entero"' : "") + ">" + esc(o.t) + "</button>"; }).join("");
+    box._r = r; box.hidden = false;
+  }
+  function conectarSugNombre() {
+    var inp = $("fNombre"), box = $("sugNombre");
+    inp.addEventListener("input", pintarSugNombre);
+    inp.addEventListener("focus", pintarSugNombre);
+    inp.addEventListener("blur", function () { setTimeout(function () { if (document.activeElement !== inp) box.hidden = true; }, 250); });
+    box.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b || !box._r) return;
+      var o = box._r.lista[+b.getAttribute("data-i")]; if (!o) return;
+      var txt = o.entero ? o.t : box._r.prefijo + o.t;
+      if (!o.entero && !box._r.prefijo) txt = txt.charAt(0).toUpperCase() + txt.slice(1);
+      inp.value = o.entero ? txt : txt + " ";
+      inp.focus(); pintarSugNombre();
+    });
+  }
   function pintarAjusteOrigen() {
     pintarPares($("segAjuste"), AJUSTES, F.ajuste);
     pintarPares($("segOrigen"), ORIGENES, F.origen);
@@ -1113,9 +1175,10 @@
   var CAT_CAPA = ["Abrigos y chaquetas", "Chalecos", "Rebecas", "Sudaderas", "Jerséis"];
   var CAT_CALZADO = ["Calzado"];
   var CAT_CALCETIN = ["Calcetines"];
+  var CAT_CALCETA = ["Calcetas"];
   var CAT_GORRO = ["Gorros"];
   var CAT_ACC = ["Accesorios"];
-  var CAT_COMPLEMENTO = ["Accesorios", "Gorros", "Calcetines"];
+  var CAT_COMPLEMENTO = ["Accesorios", "Gorros", "Calcetines", "Calcetas"];
   var MODOS = [["hoy", "Para hoy"], ["paseo", "Para pasear"], ["arreglado", "Más arreglado"], ["diario", "Cómodo diario"], ["frio", "Días fríos"], ["calor", "Días calurosos"]];
   var NIVELES = [["auto", "Automático (según el tiempo)"], ["1", "Calor"], ["2", "Templado"], ["3", "Fresco"], ["4", "Frío"]];
   var NIVEL_NOMBRE = { 1: "calor", 2: "templado", 3: "fresco", 4: "frío" };
@@ -1303,7 +1366,7 @@
     return tabla ? tabla[estiloDe(p)] : 0.5;
   }
   function puntuarPieza(p, ctx) {
-    return 0.5 * sc(p, ctx.nivel) + 0.3 * novedad(p, ctx.h) + 0.2 * afinidad(p, ctx.modo) + (p.favorito ? 0.05 : 0);
+    return 0.6 * sc(p, ctx.nivel) + 0.12 * novedad(p, ctx.h) + 0.28 * afinidad(p, ctx.modo) + (p.favorito ? 0.05 : 0);
   }
 
   function mismoConjunto(a, b) { return !!(a && b && a.conjunto && b.conjunto && norm(a.conjunto) === norm(b.conjunto)); }
@@ -1322,10 +1385,16 @@
     var mejor = null, rs = refs.filter(Boolean);
     lista.forEach(function (a) {
       var base = rs.length ? rs.reduce(function (s, r) { return s + colorPar(a.color, r.color); }, 0) / rs.length : 0.8;
-      var s = base + 0.3 * novedad(a, h) + (a.favorito ? 0.05 : 0);
+      var s = base + 0.12 * novedad(a, h) + (a.favorito ? 0.05 : 0);
       if (base >= minimo && (!mejor || s > mejor.s)) mejor = { a: a, s: s };
     });
     return mejor ? mejor.a : null;
+  }
+  // ¿La parte de abajo deja las piernas al aire? (corto, bermuda, short, falda, vestido…)
+  function piernaCorta(it) {
+    var b = it.abajo || it.uno; if (!b) return false;
+    if (b.categoria === "Vestidos") return true;
+    return /\b(corto|corta|cortos|cortas|bermuda|bermudas|short|shorts|pantaloncito|falda|faldita|manga corta|sin mangas)\b/.test(textoPrenda(b));
   }
   function claveIds(ids) { return ids.slice().sort().join("|"); }
 
@@ -1363,16 +1432,16 @@
     var afin = piezas.reduce(function (s, p) { return s + afinidad(p, ctx.modo); }, 0) / piezas.length;
     var fav = piezas.filter(function (p) { return p.favorito; }).length / piezas.length;
 
-    var score = 0.34 * color + 0.18 * temporada + 0.16 * termico + 0.2 * nov + 0.07 * afin + 0.05 * fav;
+    var score = 0.42 * color + 0.18 * temporada + 0.16 * termico + 0.1 * nov + 0.07 * afin + 0.05 * fav;
     if (hayConjunto) score += 0.06;   // piezas compradas juntas: están hechas para combinar
     var ids = piezas.map(function (p) { return p.id; });
     var clave = claveIds(ids), pen = penEstilo;
     ctx.h.conjuntos.forEach(function (c) { if (c.dias <= 14 && claveIds(c.ids) === clave) pen += 0.5; });
     var recientes = piezas.filter(function (p) { return ctx.h.ultimo[p.id] !== undefined && ctx.h.ultimo[p.id] <= 2; }).length;
-    pen += Math.min(0.3, recientes * 0.1);
+    pen += Math.min(0.15, recientes * 0.05);
     if (C.vistos[clave]) pen += 0.15;
     if (ctx.capaExtra && it.capa && nivel >= 2) pen -= 0.06; // lluvia o viento: mejor llevar capa
-    return { it: it, ids: ids, score: score - pen + Math.random() * 0.03, nivel: nivel };
+    return { it: it, ids: ids, score: score - pen + Math.random() * 0.03, nov: nov, nivel: nivel };
   }
 
   function nombresLista(ps) { return ps.map(function (p) { return "«" + p.nombre + "»"; }).join(", "); }
@@ -1441,7 +1510,7 @@
     var arribas = mejores(de(CAT_ARRIBA), 10), abajos = mejores(de(CAT_ABAJO), 10), unos = mejores(de(CAT_UNO), 8);
     var zapatos = aj.usaCalzado ? mejores(de(CAT_CALZADO), 8) : [], capas = nivel > 1 ? mejores(de(CAT_CAPA), 10) : [];
     function complementos(cats) { return de(cats).filter(function (p) { return sc(p, nivel) >= 0.7; }); }
-    var accesorios = complementos(CAT_ACC), calcetines = complementos(CAT_CALCETIN), gorros = complementos(CAT_GORRO);
+    var accesorios = complementos(CAT_ACC), calcetines = complementos(CAT_CALCETIN), calcetas = complementos(CAT_CALCETA), gorros = complementos(CAT_GORRO);
 
     var bases = [];
     arribas.forEach(function (a) { abajos.forEach(function (b) { bases.push({ arriba: a, abajo: b }); }); });
@@ -1483,18 +1552,27 @@
 
     cand.sort(function (a, b) { return b.score - a.score; });
     var elegidos = [];
-    [2, 1].forEach(function (minDif) {
-      cand.forEach(function (c) {
-        if (elegidos.length >= 4 || elegidos.indexOf(c) >= 0) return;
-        var ok = elegidos.every(function (e) { return c.ids.filter(function (id) { return e.ids.indexOf(id) < 0; }).length >= minDif; });
-        if (ok) elegidos.push(c);
+    // Las dos primeras: las que mejor pegan. Las otras dos: las que menos repiten prendas (sin dejar de combinar bien).
+    var mejorScore = cand.length ? cand[0].score : 0;
+    var porNovedad = cand.filter(function (c) { return c.score >= mejorScore - 0.12; }).sort(function (a, b) { return (b.score + 0.6 * b.nov) - (a.score + 0.6 * a.nov); });
+    function tomar(lista, hasta, etq) {
+      [2, 1].forEach(function (minDif) {
+        lista.forEach(function (c) {
+          if (elegidos.length >= hasta || elegidos.indexOf(c) >= 0) return;
+          var ok = elegidos.every(function (e) { return c.ids.filter(function (id) { return e.ids.indexOf(id) < 0; }).length >= minDif; });
+          if (ok) { c.etq = etq; elegidos.push(c); }
+        });
       });
-    });
+    }
+    tomar(cand, 2, "pega");
+    tomar(porNovedad, 4, "nuevo");
+    tomar(cand, 4, "pega");
 
     elegidos.forEach(function (o) {
       var Asup = o.it.capa2 || o.it.capa || o.it.arriba || o.it.uno, Binf = o.it.abajo || o.it.uno;
       var acc = mejorComplemento(accesorios, [Asup, Binf], h, 0.75);
-      var calc = mejorComplemento(calcetines, [o.it.calzado, Binf], h, 0.65);
+      // Las calcetas (largas, hasta la rodilla) solo con perneras cortas: pantalón corto, peto o ranita corta, falda, vestido…
+      var calc = mejorComplemento(calcetas.length && piernaCorta(o.it) ? calcetines.concat(calcetas) : calcetines, [o.it.calzado, Binf], h, 0.65);
       var gor = mejorComplemento(gorros, [Asup], h, 0.75);
       if (calc) { o.it.calcetin = calc; o.ids.push(calc.id); }
       if (gor) { o.it.gorro = gor; o.ids.push(gor.id); }
@@ -1513,11 +1591,12 @@
     if (it.capa) piezas.push([it.capa, "Capa"]);
     if (it.capa2) piezas.push([it.capa2, "Abrigo"]);
     if (it.calzado) piezas.push([it.calzado, "Calzado"]);
-    if (it.calcetin) piezas.push([it.calcetin, "Calcetines"]);
+    if (it.calcetin) piezas.push([it.calcetin, it.calcetin.categoria === "Calcetas" ? "Calcetas" : "Calcetines"]);
     if (it.gorro) piezas.push([it.gorro, "Gorro"]);
     if (it.acc) piezas.push([it.acc, "Accesorio"]);
     var h = '<div class="conj" data-ids="' + esc(o.ids.join(",")) + '">'
       + '<div class="conj-cab"><span>Propuesta ' + (i + 1) + '</span><span class="chip">' + etiquetaScore(o.score) + "</span></div>"
+        + (o.etq === "nuevo" ? '<p class="nota" style="margin:0 0 6px">Para no repetir prendas</p>' : o.etq === "pega" ? '<p class="nota" style="margin:0 0 6px">De las que mejor pegan</p>' : "")
       + '<div class="conj-fotos">';
     piezas.forEach(function (x) {
       h += '<figure><div class="im"><img alt="' + esc(x[0].nombre) + '" data-mini="' + esc(x[0].id) + '"></div><figcaption>' + x[1] + "</figcaption></figure>";
@@ -1768,7 +1847,7 @@
   var ETQ = {
     "Camisetas y partes de arriba": ["Camiseta", 1], "Bodies": ["Body", 1], "Camisas": ["Camisa", 1], "Jerséis": ["Jersey", 2], "Sudaderas": ["Sudadera", 2],
     "Pantalones y partes de abajo": ["Pantalón", 3], "Petos": ["Peto", 3], "Conjuntos": ["Conjunto", 0], "Monos": ["Mono", 0], "Vestidos": ["Vestido", 0],
-    "Abrigos y chaquetas": ["Abrigo", 4], "Chalecos": ["Chaleco", 4], "Rebecas": ["Rebeca", 4], "Calzado": ["Calzado", 5], "Calcetines": ["Calcetines", 6],
+    "Abrigos y chaquetas": ["Abrigo", 4], "Chalecos": ["Chaleco", 4], "Rebecas": ["Rebeca", 4], "Calzado": ["Calzado", 5], "Calcetines": ["Calcetines", 6], "Calcetas": ["Calcetas", 6],
     "Gorros": ["Gorro", 7], "Accesorios": ["Accesorio", 8]
   };
   function etq(p) { return ETQ[p.categoria] || [p.categoria, 9]; }
@@ -2257,7 +2336,7 @@
     if (CAT_ARRIBA.indexOf(cat) >= 0) return { id: "arriba", txt: "partes de arriba" };
     if (CAT_ABAJO.indexOf(cat) >= 0) return { id: "abajo", txt: "partes de abajo" };
     if (cat === "Abrigos y chaquetas" || cat === "Chalecos" || cat === "Rebecas") return { id: "capa", txt: "abrigos, chaquetas y capas" };
-    if (cat === "Calcetines") return { id: "calc", txt: "calcetines" };
+    if (cat === "Calcetines" || cat === "Calcetas") return { id: "calc", txt: "calcetines" };
     if (cat === "Gorros") return { id: "gorro", txt: "gorros" };
     if (cat === "Calzado") return { id: "calzado", txt: "calzado" };
     return { id: cat, txt: cat };
@@ -2753,6 +2832,7 @@
       var q = piezaEnlazada(); if (q && q.conjunto) $("fConjuntoOtro").value = q.conjunto;
     });
     conectarListaSel("fPrestadaDe", "fPrestadaOtro");
+    conectarSugNombre();
     $("btnFavForm").addEventListener("click", function () { F.favorito = !F.favorito; pintarFavForm(); });
     $("btnGuardar").addEventListener("click", function () { guardarPrenda(false); });
     $("btnGuardarOtra").addEventListener("click", function () { guardarPrenda(true); });
