@@ -310,6 +310,10 @@
             <input type="text" id="fPrestadaOtro" placeholder="Nombre de la persona" maxlength="40" style="margin-top:8px" hidden autocomplete="off">
             <div class="seg" id="segDevolver" style="margin-top:8px"></div>
           </div></div>
+        <div class="campo"><label for="fConjunto">¿Viene en un conjunto?</label><select id="fConjunto"></select>
+          <select id="fConjuntoPieza" style="margin-top:8px" hidden></select>
+          <input type="text" id="fConjuntoOtro" placeholder="Nombre del conjunto, ej.: Chándal azul" maxlength="40" style="margin-top:8px" hidden autocomplete="off">
+          <p class="nota" style="margin:6px 0 0">Para prendas que compraste juntas (sudadera + pantalón de chándal). Cada pieza lleva su foto y se puede usar por separado.</p></div>
         <div class="campo"><label for="fEstado">Estado</label><select id="fEstado"></select></div>
         <div class="campo"><span class="etq">Favorita</span><div class="seg"><button type="button" id="btnFavForm">♥ Marcar como favorita</button></div></div>
       </div>
@@ -317,6 +321,7 @@
 
     <p class="error" id="errForm"></p>
     <button class="btn" id="btnGuardar">Guardar prenda</button>
+    <button class="btn sec" id="btnGuardarOtra">Guardar y añadir otra pieza del conjunto</button>
     <button class="btn sec" id="btnCancelar" hidden>Cancelar</button>
   </section>
 
@@ -721,7 +726,7 @@
   function filtrar(lista) {
     var f = S.filtros, t = norm(f.texto);
     return lista.filter(function (p) {
-      if (t && norm(p.nombre).indexOf(t) < 0 && norm(p.tipo).indexOf(t) < 0) return false;
+      if (t && norm(p.nombre).indexOf(t) < 0 && norm(p.tipo).indexOf(t) < 0 && norm(p.conjunto || "").indexOf(t) < 0 && norm(p.marca || "").indexOf(t) < 0) return false;
       if (f.cat && p.categoria !== f.cat) return false;
       if (f.talla && p.talla !== f.talla) return false;
       if (f.color && p.color !== f.color && (p.colores2 || []).indexOf(f.color) < 0) return false;
@@ -797,11 +802,18 @@
     fila("Marca", esc(p.marca));
     fila("Cómo le queda", p.ajuste ? esc((AJUSTES.filter(function (x) { return x[0] === p.ajuste; })[0] || [0, p.ajuste])[1]) + (p.ajusteTalla ? " <small>(con talla " + esc(p.ajusteTalla) + ")</small>" : "") : "");
     if (p.origen === "prestada") fila("Procedencia", "Prestada" + (p.prestadaDe ? " por " + esc(p.prestadaDe) : "") + (p.estado === "devuelta" ? ' <span class="chip">devuelta</span>' : p.devolver === false ? ' <span class="chip">no hay que devolverla</span>' : ' <span class="chip aviso">por devolver</span>'));
+    if (p.conjunto) {
+      var otras = S.inv.prendas.filter(function (x) { return x.id !== p.id && x.conjunto && norm(x.conjunto) === norm(p.conjunto) && x.estado !== "devuelta"; });
+      fila("Conjunto", esc(p.conjunto) + (otras.length
+        ? "<br><small>Con: " + otras.map(function (o) { return '<button class="linkbtn" data-acc="ver" data-id="' + esc(o.id) + '">' + esc(o.nombre) + "</button>"; }).join(" · ") + "</small>"
+        : " <small>(aún no has añadido las otras piezas)</small>"));
+    }
     fila("Estado", esc(p.estado));
     $("hoja").innerHTML = '<div class="grande"><img id="imgGrande" alt=""></div>'
       + "<h3>" + esc(p.nombre) + "</h3>"
       + '<dl class="ficha">' + filas.join("") + "</dl>"
       + '<button class="btn sec" data-acc="fav" data-id="' + esc(p.id) + '">' + (p.favorito ? "♥ Quitar de favoritas" : "♡ Marcar como favorita") + "</button>"
+      + (p.conjunto ? '<button class="btn sec" data-acc="favconj" data-id="' + esc(p.id) + '">♡ Guardar el conjunto en favoritos</button>' : "")
       + (porDevolver(p) ? '<button class="btn sec" data-acc="devuelta" data-id="' + esc(p.id) + '">Marcar como devuelta</button>' : "")
       + '<button class="btn" data-acc="editar" data-id="' + esc(p.id) + '">Editar</button>'
       + '<button class="btn peligro" data-acc="eliminar" data-id="' + esc(p.id) + '">Eliminar</button>'
@@ -814,6 +826,13 @@
     }).catch(function () { toast("No se pudo cargar la foto grande"); });
   }
 
+  function guardarConjuntoComprado(id) {
+    var p = S.inv.prendas.find(function (x) { return x.id === id; }); if (!p || !p.conjunto) return;
+    var piezas = S.inv.prendas.filter(function (x) { return x.conjunto && norm(x.conjunto) === norm(p.conjunto) && x.estado !== "devuelta"; });
+    if (piezas.length < 2) { toast("Añade primero las otras piezas del conjunto"); return; }
+    cerrarDetalle();
+    guardarFavorito(piezas.map(function (x) { return x.id; }), p.conjunto);
+  }
   async function marcarDevuelta(id) {
     var p = S.inv.prendas.find(function (x) { return x.id === id; }); if (!p) return;
     if (!confirm("¿Marcar «" + p.nombre + "» como devuelta? Dejará de aparecer en los conjuntos. La foto y los datos se conservan.")) return;
@@ -887,7 +906,7 @@
     };
     $("tituloForm").textContent = p ? "Editar prenda" : "Añadir prenda";
     $("btnGuardar").textContent = p ? "Guardar cambios" : "Guardar prenda";
-    $("btnCancelar").hidden = !p;
+    $("btnCancelar").hidden = !p; $("btnGuardarOtra").hidden = !!p;
     $("errForm").textContent = "";
     $("fFile").value = "";
     $("fotoPrev").hidden = true; $("fotoPrev").removeAttribute("src");
@@ -921,11 +940,25 @@
     pintarListaSel("fMarca", "fMarcaOtro", "marca", [], p ? p.marca : "", "Sin indicar");
     pintarListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", [], p ? p.prestadaDe : "", "Elige la persona");
     pintarListaSel("fTejido", "fTejidoOtro", "tejido", TEJIDOS_BASE, p ? p.tejido : "", "Sin indicar");
+    pintarListaSel("fConjunto", "fConjuntoOtro", "conjunto", [], p ? p.conjunto : "", "No (prenda suelta)", "➕ Nuevo conjunto…");
+    pintarOpcionPiezaExistente(p);
     F.devolver = p && p.origen === "prestada" ? (p.devolver === false ? "no" : "si") : "no";
     pintarAjusteOrigen(); mostrarNotaMarca();
     pintarFavForm();
     $("masDetalles").open = !!p;
   }
+  // Opción "La otra pieza ya está en mi armario": enlaza esta prenda con otra ya subida
+  function pintarOpcionPiezaExistente(p) {
+    var sel = $("fConjunto"), pie = $("fConjuntoPieza");
+    var op = document.createElement("option"); op.value = "__existente"; op.textContent = "🔗 La otra pieza ya está en mi armario…";
+    sel.insertBefore(op, sel.querySelector('option[value="__otra"]'));
+    var h = '<option value="">Elige la prenda del conjunto…</option>';
+    S.inv.prendas.filter(function (x) { return !p || x.id !== p.id; }).forEach(function (x) {
+      h += '<option value="' + esc(x.id) + '">' + esc(x.nombre + " · " + x.categoria + (x.talla ? " · " + x.talla : "") + (x.conjunto ? " (ya en «" + x.conjunto + "»)" : "")) + "</option>";
+    });
+    pie.innerHTML = h; pie.hidden = true;
+  }
+  function piezaEnlazada() { return $("fConjunto").value === "__existente" ? S.inv.prendas.find(function (x) { return x.id === $("fConjuntoPieza").value; }) : null; }
   // Desplegable con las opciones ya usadas y "Otra…" para escribir una nueva (que luego aparece en la lista)
   function listaOpciones(campo, base) {
     var out = [], vistos = {};
@@ -934,10 +967,10 @@
     });
     return out;
   }
-  function pintarListaSel(selId, otroId, campo, base, valor, textoVacio) {
+  function pintarListaSel(selId, otroId, campo, base, valor, textoVacio, textoOtra) {
     var lista = listaOpciones(campo, base), sel = $(selId), h = '<option value="">' + esc(textoVacio) + "</option>";
     lista.forEach(function (v) { h += '<option value="' + esc(v) + '">' + esc(v) + "</option>"; });
-    h += '<option value="__otra">➕ Otra…</option>';
+    h += '<option value="__otra">' + esc(textoOtra || "➕ Otra…") + "</option>";
     sel.innerHTML = h;
     var hit = valor ? lista.filter(function (v) { return norm(v) === norm(valor); })[0] : "";
     sel.value = hit || ""; $(otroId).value = ""; $(otroId).hidden = true;
@@ -987,7 +1020,17 @@
     var ya = marcasUsadas().filter(function (x) { return norm(x) === norm(m); })[0];
     return ya || m;
   }
-  async function guardarPrenda() {
+  // Otra pieza del mismo conjunto: se heredan marca, talla, color, temporada, abrigo, estilo, tejido, procedencia y conjunto
+  function prepararSiguientePieza(d) {
+    var base = Object.assign({}, d, { id: null, nombre: "", categoria: "", tipo: "", ajuste: "", favorito: false });
+    prepararFormulario(base);
+    S.editId = null;
+    $("tituloForm").textContent = "Añadir prenda"; $("btnGuardar").textContent = "Guardar prenda";
+    $("btnCancelar").hidden = true; $("btnGuardarOtra").hidden = false;
+    $("masDetalles").open = true;
+    $("fCategoria").value = "";
+  }
+  async function guardarPrenda(siguiente) {
     var err = $("errForm"); err.textContent = "";
     var nombre = $("fNombre").value.trim();
     var catSel = $("fCategoria").value;
@@ -996,6 +1039,19 @@
     if (!F.foto && !editando) { err.textContent = "Falta la foto."; return; }
     if (!nombre) { err.textContent = "Falta el nombre."; $("fNombre").focus(); return; }
     if (!cat) { err.textContent = "Elige una categoría."; return; }
+    var enlazada = piezaEnlazada(), conjunto;
+    if ($("fConjunto").value === "__existente") {
+      if (!enlazada) { $("masDetalles").open = true; err.textContent = "Elige cuál es la otra pieza del conjunto."; return; }
+      var nm = $("fConjuntoOtro").value.trim() || enlazada.conjunto || "";
+      if (!nm) { $("masDetalles").open = true; $("fConjuntoOtro").hidden = false; $("fConjuntoOtro").focus(); err.textContent = "Ponle nombre al conjunto, ej.: Chándal azul."; return; }
+      var ya = valoresUsados("conjunto").filter(function (x) { return norm(x) === norm(nm); })[0];
+      conjunto = ya || nm;
+    } else conjunto = leerListaSel("fConjunto", "fConjuntoOtro", "conjunto", []);
+    if (siguiente && !conjunto) {
+      $("masDetalles").open = true; $("fConjunto").value = "__otra"; $("fConjuntoOtro").hidden = false; $("fConjuntoOtro").focus();
+      err.textContent = "Para añadir otra pieza, elige o escribe el nombre del conjunto (campo «¿Viene en un conjunto?»).";
+      return;
+    }
 
     var talla = $("fTalla2").value === "__otra" ? $("fTallaOtra").value.trim() : $("fTalla2").value;
     var btn = $("btnGuardar"), textoBtn = btn.textContent;
@@ -1022,7 +1078,8 @@
         estado: $("fEstado").value || "disponible", favorito: F.favorito,
         marca: leerListaSel("fMarca", "fMarcaOtro", "marca", []), ajuste: F.ajuste, origen: F.origen,
         prestadaDe: F.origen === "prestada" ? leerListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", []) : "",
-        devolver: F.origen === "prestada" ? F.devolver === "si" : false
+        devolver: F.origen === "prestada" ? F.devolver === "si" : false,
+        conjunto: conjunto
       };
       // El ajuste se apunta con la talla de Juan de ese momento; solo se actualiza si lo cambias
       if (F.ajuste !== (editando ? (editando.ajuste || "") : "")) datos.ajusteTalla = F.ajuste ? tallaRopaEf(S.inv.ajustes) : "";
@@ -1032,6 +1089,10 @@
         var i = inv.prendas.findIndex(function (x) { return x.id === id; });
         if (i >= 0) inv.prendas[i] = Object.assign({}, inv.prendas[i], datos, { modificada: ahora });
         else inv.prendas.unshift(Object.assign({ id: id, foto: rutaFoto, miniatura: rutaMini, creada: ahora }, datos));
+        if (enlazada) {
+          var j = inv.prendas.findIndex(function (x) { return x.id === enlazada.id; });
+          if (j >= 0) inv.prendas[j] = Object.assign({}, inv.prendas[j], { conjunto: conjunto, modificada: ahora });
+        }
       });
       // Si escribió una categoría igual a otra ya existente (con otra forma de escribirla), se usa la existente
       var vuelve = !!editando;
@@ -1039,6 +1100,7 @@
       S.editId = null;
       prepararFiltros();
       if (vuelve) { irA("armario"); toast("Cambios guardados ✓"); }
+      else if (siguiente) { prepararSiguientePieza(datos); window.scrollTo(0, 0); toast("Guardada ✓ Ahora la otra pieza de «" + conjunto + "»"); }
       else { prepararFormulario(null); window.scrollTo(0, 0); toast("Prenda guardada ✓ Puedes añadir otra"); }
     } catch (e) {
       err.textContent = "No se pudo guardar: " + e.message;
@@ -1250,6 +1312,7 @@
     return 0.5 * sc(p, ctx.nivel) + 0.3 * novedad(p, ctx.h) + 0.2 * afinidad(p, ctx.modo) + (p.favorito ? 0.05 : 0);
   }
 
+  function mismoConjunto(a, b) { return !!(a && b && a.conjunto && b.conjunto && norm(a.conjunto) === norm(b.conjunto)); }
   function paresDe(it) {
     var A = it.arriba || it.uno, B = it.abajo, pares = [];
     if (it.arriba && it.abajo) pares.push([it.arriba, it.abajo, 3]);
@@ -1283,7 +1346,8 @@
     if ([it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(function (p) { return p && esVaquera(p); }).length >= 2) { ctx.rechVaquero++; return null; }
     var penEstilo = (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) ? 0.12 : 0;
     var pares = paresDe(it), sw = 0, ss = 0;
-    pares.forEach(function (x) { sw += x[2]; ss += x[2] * colorPar(x[0].color, x[1].color); });
+    pares.forEach(function (x) { sw += x[2]; ss += x[2] * (mismoConjunto(x[0], x[1]) ? 1 : colorPar(x[0].color, x[1].color)); });
+    var hayConjunto = pares.some(function (x) { return mismoConjunto(x[0], x[1]); });
     var color = pares.length ? ss / sw : 0.9;
     var vivos = {};
     piezas.forEach(function (p) { if (p.color && NEUTROS.indexOf(p.color) < 0) vivos[p.color] = 1; });
@@ -1306,6 +1370,7 @@
     var fav = piezas.filter(function (p) { return p.favorito; }).length / piezas.length;
 
     var score = 0.34 * color + 0.18 * temporada + 0.16 * termico + 0.2 * nov + 0.07 * afin + 0.05 * fav;
+    if (hayConjunto) score += 0.06;   // piezas compradas juntas: están hechas para combinar
     var ids = piezas.map(function (p) { return p.id; });
     var clave = claveIds(ids), pen = penEstilo;
     ctx.h.conjuntos.forEach(function (c) { if (c.dias <= 14 && claveIds(c.ids) === clave) pen += 0.5; });
@@ -1323,7 +1388,11 @@
     var cols = [];
     piezas.forEach(function (p) { if (p.color && cols.indexOf(p.color) < 0) cols.push(p.color); });
     var peor = null;
+    var porConj = {};
+    piezas.forEach(function (p) { if (p.conjunto) { var k = norm(p.conjunto); (porConj[k] = porConj[k] || []).push(p); } });
+    Object.keys(porConj).forEach(function (k) { if (porConj[k].length > 1) razones.push("Van juntas porque son del mismo conjunto («" + porConj[k][0].conjunto + "»)."); });
     paresDe(it).forEach(function (x) {
+      if (mismoConjunto(x[0], x[1])) return;
       if (x[0].color && x[1].color) {
         var s = colorPar(x[0].color, x[1].color);
         if (!peor || s < peor.s) peor = { s: s, a: x[0].color, b: x[1].color };
@@ -1847,10 +1916,10 @@
   }
 
   // ---- Favoritos ----
-  async function guardarFavorito(ids) {
+  async function guardarFavorito(ids, nombreDef) {
     var clave = claveIds(ids);
     if ((S.inv.conjuntos || []).some(function (c) { return claveIds(c.prendas) === clave; })) { toast("Ya está en tus conjuntos favoritos"); return; }
-    var def = "Conjunto " + fechaCorta(fechaHoy(0));
+    var def = nombreDef || "Conjunto " + fechaCorta(fechaHoy(0));
     var nombre = prompt("Nombre para este conjunto favorito:", def);
     if (nombre === null) return;
     nombre = (nombre || "").trim() || def;
@@ -1966,6 +2035,14 @@
       }
     }
     h += "</div>";
+    // Conjuntos comprados
+    var cj = {};
+    prendas.forEach(function (p) { if (!p.conjunto) return; var k = norm(p.conjunto); (cj[k] = cj[k] || { n: p.conjunto, l: [] }).l.push(p); });
+    var ck = Object.keys(cj).sort(function (a, b) { return cj[a].n.localeCompare(cj[b].n, "es"); });
+    if (ck.length) {
+      h += '<div class="card"><h2>Conjuntos comprados</h2>' + ck.map(function (k) { return '<div class="barra"><span>' + esc(cj[k].n) + "</span><b" + (cj[k].l.length < 2 ? ' class="poco"' : "") + ">" + cj[k].l.length + (cj[k].l.length === 1 ? " pieza · falta la otra" : " piezas") + "</b></div>"; }).join("")
+        + '<p class="nota" style="margin:8px 0 0">Las piezas de un conjunto se combinan bien entre sí. Para guardarlo en favoritos, abre una pieza y pulsa «Guardar el conjunto en favoritos».</p></div>';
+    }
     // Prestadas
     var pend = (S.inv.prendas || []).filter(porDevolver);
     var sinDev = (S.inv.prendas || []).filter(function (p) { return p.origen === "prestada" && p.estado !== "devuelta" && p.devolver === false; }).length;
@@ -2080,6 +2157,7 @@
     var q = Object.assign({}, p);   // copia: no se modifica el inventario real
     q.categoria = catEf(q);
     q._e = estiloDe(q); q._c = calidez(q); q._v = esVaquera(q) ? 1 : 0; q._s = esEstampada(q) ? 1 : 0;
+    q._k = q.conjunto ? norm(q.conjunto) : "";
     q._i = q.talla ? idxRopa(q.talla) : -1; q._n = NEUTROS.indexOf(q.color) >= 0 || !q.color;
     q._sc = { 1: sc(q, 1), 2: sc(q, 2), 3: sc(q, 3), 4: sc(q, 4) };
     return q;
@@ -2098,10 +2176,11 @@
     [top, b, c].forEach(function (p) { if (p && p._i >= 0) { if (p._i > imx) imx = p._i; if (p._i < imn) imn = p._i; } });
     if (imx - imn > 1 && imx >= 0) return 0;
     var sw = 0, ss = 0, mi = 1, s;
-    if (b) { s = cp(top.color, b.color); sw += 3; ss += 3 * s; if (s < mi) mi = s; }
+    function cpk(x, y) { return x._k && x._k === y._k ? 1 : cp(x.color, y.color); }
+    if (b) { s = cpk(top, b); sw += 3; ss += 3 * s; if (s < mi) mi = s; }
     if (c) {
-      s = cp(c.color, top.color); sw += 1.5; ss += 1.5 * s; if (s < mi) mi = s;
-      if (b) { s = cp(c.color, b.color); sw += 1; ss += s; if (s < mi) mi = s; }
+      s = cpk(c, top); sw += 1.5; ss += 1.5 * s; if (s < mi) mi = s;
+      if (b) { s = cpk(c, b); sw += 1; ss += s; if (s < mi) mi = s; }
     }
     if (mi < 0.5) return 0;
     var color = sw ? ss / sw : 0.9;
@@ -2608,6 +2687,8 @@
       if (acc === "fav") { alternarFav(id).then(function () { if (!$("fondo").hidden) abrirDetalle(id); }); }
       if (acc === "eliminar") eliminarPrenda(id);
       if (acc === "devuelta") marcarDevuelta(id);
+      if (acc === "ver") abrirDetalle(id);
+      if (acc === "favconj") guardarConjuntoComprado(id);
       if (acc === "editar") {
         var p = S.inv.prendas.find(function (x) { return x.id === id; });
         cerrarDetalle(); prepararFormulario(p); irA("anadir");
@@ -2666,11 +2747,22 @@
     });
     conectarListaSel("fMarca", "fMarcaOtro", mostrarNotaMarca);
     conectarListaSel("fTejido", "fTejidoOtro");
+    $("fConjunto").addEventListener("change", function () {
+      var v = $("fConjunto").value, ex = v === "__existente";
+      $("fConjuntoPieza").hidden = !ex;
+      $("fConjuntoOtro").hidden = !(v === "__otra" || ex);
+      $("fConjuntoOtro").placeholder = ex ? "Nombre del conjunto, ej.: Chándal azul" : "Nombre del conjunto, ej.: Chándal azul";
+      if (v === "__otra" || ex) { if (ex) $("fConjuntoPieza").focus(); else $("fConjuntoOtro").focus(); }
+    });
+    $("fConjuntoPieza").addEventListener("change", function () {
+      var q = piezaEnlazada(); if (q && q.conjunto) $("fConjuntoOtro").value = q.conjunto;
+    });
     conectarListaSel("fPrestadaDe", "fPrestadaOtro", function () {
       F.devolver = devolverPorDefecto(leerListaSel("fPrestadaDe", "fPrestadaOtro", "prestadaDe", [])); pintarAjusteOrigen();
     });
     $("btnFavForm").addEventListener("click", function () { F.favorito = !F.favorito; pintarFavForm(); });
-    $("btnGuardar").addEventListener("click", guardarPrenda);
+    $("btnGuardar").addEventListener("click", function () { guardarPrenda(false); });
+    $("btnGuardarOtra").addEventListener("click", function () { guardarPrenda(true); });
     $("btnCancelar").addEventListener("click", function () { S.editId = null; irA("armario"); });
   }
 
