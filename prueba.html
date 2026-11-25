@@ -122,6 +122,10 @@
   details.mas summary { padding: 14px; font-size: 15px; font-weight: 600; color: var(--marron); list-style: none; }
   details.mas summary::-webkit-details-marker { display: none; }
   details.mas .dentro { padding: 0 14px 6px; }
+  .estrellas { display: flex; align-items: center; flex-wrap: wrap; margin: 8px 0 4px; }
+  .estrellas button { background: none; border: none; font-size: 28px; line-height: 1; color: #d9ccb6; padding: 2px 5px; min-width: 40px; min-height: 40px; }
+  .estrellas button.on { color: #e0a82e; }
+  .veredicto { font-size: 19px; font-weight: 700; margin: 4px 0 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .sugnombre { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .sugnombre button { border: 1px solid var(--linea); background: var(--blanco); border-radius: 999px; padding: 7px 13px; font-size: 14.5px; color: var(--texto); }
   .sugnombre button.entero { border-color: var(--salvia); color: var(--salvia); font-weight: 600; }
@@ -338,12 +342,16 @@
       <div class="seg" id="segDia"></div>
       <div id="tiempoCuerpo" style="margin-top:12px"></div>
     </div>
+    <div class="seg" id="segQuien" style="margin-bottom:14px"></div>
+    <div id="bloqueProponer1">
     <div class="campo"><span class="etq">¿Qué conjunto quieres?</span><div class="seg wrap" id="segModo"></div></div>
     <div class="campo" id="panelOcasion" hidden>
       <label for="selOcasion">¿Qué ocasión es?</label><select id="selOcasion"></select>
       <input type="text" id="ocasionOtra" placeholder="¿Qué ocasión?" maxlength="40" style="margin-top:8px" hidden autocomplete="off">
       <label for="ocasionFecha" style="margin-top:12px;display:block">Fecha (opcional)</label><input type="date" id="ocasionFecha">
       <p class="nota" id="notaOcasion" style="margin-top:8px"></p>
+    </div>
+    <div class="campo"><label for="selObligada">📌 Prenda que quiero que salga sí o sí (opcional)</label><select id="selObligada"></select><p class="nota" id="notaObligada" style="margin-top:6px">Elige una prenda y te propongo looks que la lleven.</p></div>
     </div>
     <div class="campo"><span class="etq">¿Qué tiempo hace?</span><div class="seg wrap" id="segNivel"></div><p class="nota" id="notaNivel" style="margin-top:8px"></p></div>
     <details class="mas">
@@ -356,8 +364,16 @@
         <div class="campo"><label for="selTallaCalzado">Número de calzado</label><select id="selTallaCalzado"></select></div>
       </div>
     </details>
+    <div id="bloqueProponer2">
     <button class="btn" id="btnCrear">Crear conjuntos</button>
     <div id="resultados" style="margin-top:16px"></div>
+    </div>
+    <div id="panelMio" hidden>
+      <p class="nota">Elige tú las prendas y te digo qué tal quedan juntas, qué no me convence y cómo mejorarlo. Solo uso prendas de tu armario.</p>
+      <div id="mioSlots"></div>
+      <button class="btn" id="btnOpinar">Pedir opinión</button>
+      <div id="mioResultado" style="margin-top:16px"></div>
+    </div>
   </section>
 
   <!-- Calendario -->
@@ -601,7 +617,7 @@
     return { version: 1, creado: new Date().toISOString(), ajustes: { tallaRopa: "", tallaCalzado: "", usaCalzado: false, nacimiento: "" }, categoriasExtra: [], prendas: [], conjuntos: [], calendario: [], sugerencias: [] };
   }
   function normalizarInv(inv) {
-    ["prendas", "conjuntos", "calendario", "sugerencias", "categoriasExtra"].forEach(function (k) { if (!Array.isArray(inv[k])) inv[k] = []; });
+    ["prendas", "conjuntos", "calendario", "sugerencias", "categoriasExtra", "valoraciones"].forEach(function (k) { if (!Array.isArray(inv[k])) inv[k] = []; });
     if (!inv.ajustes || typeof inv.ajustes !== "object") inv.ajustes = {};
     if (typeof inv.ajustes.tallaRopa !== "string") inv.ajustes.tallaRopa = "";
     if (typeof inv.ajustes.nacimiento !== "string") inv.ajustes.nacimiento = "";
@@ -829,6 +845,7 @@
       + '<button class="btn sec" data-acc="fav" data-id="' + esc(p.id) + '">' + (p.favorito ? "♥ Quitar de favoritas" : "♡ Marcar como favorita") + "</button>"
       + (p.conjunto ? '<button class="btn sec" data-acc="favconj" data-id="' + esc(p.id) + '">♡ Guardar el conjunto en favoritos</button>' : "")
       + (porDevolver(p) ? '<button class="btn sec" data-acc="devuelta" data-id="' + esc(p.id) + '">Marcar como devuelta</button>' : "")
+      + '<button class="btn sec" data-acc="looks" data-id="' + esc(p.id) + '">📌 Crear looks con esta prenda</button>'
       + '<button class="btn" data-acc="editar" data-id="' + esc(p.id) + '">Editar</button>'
       + '<button class="btn peligro" data-acc="eliminar" data-id="' + esc(p.id) + '">Eliminar</button>'
       + '<button class="btn sec" data-acc="cerrar">Cerrar</button>';
@@ -1278,7 +1295,7 @@
     3: { "otoño": 1, primavera: 0.8, invierno: 0.7, verano: 0 },
     4: { invierno: 1, "otoño": 0.6, primavera: 0.15, verano: 0 }
   };
-  var C = { modo: "hoy", nivel: "auto", dia: 0, resultados: [], vistos: {}, ocasion: "", ocasionOtra: "", ocasionFecha: "" };
+  var C = { modo: "hoy", nivel: "auto", dia: 0, resultados: [], vistos: {}, ocasion: "", ocasionOtra: "", ocasionFecha: "", obligada: "", quien: "proponer", mio: {}, mioRes: null };
 
   function temporadaActual(d) {
     var m = d.getMonth();
@@ -1513,18 +1530,48 @@
 
     var score = 0.42 * color + 0.18 * temporada + 0.16 * termico + 0.1 * nov + 0.07 * afin + 0.05 * fav;
     if (hayConjunto) score += 0.06;   // piezas compradas juntas: están hechas para combinar
+    // Lo que he aprendido de tus valoraciones con estrellas
+    var aprend = 0, nucleoK = "";
+    if (ctx.ap && ctx.ap.n) {
+      var core = [it.arriba, it.abajo, it.uno, it.capa, it.capa2, it.calzado].filter(Boolean), sm = 0, np = 0, pz = 0, pn = 0;
+      nucleoK = claveIds(core.map(function (p) { return p.id; }));
+      for (var i1 = 0; i1 < core.length; i1++) for (var j1 = i1 + 1; j1 < core.length; j1++) {
+        var op = ctx.ap.par[[core[i1].id, core[j1].id].sort().join("|")];
+        if (op) { sm += (op.s / op.n - 3) / 2; np++; }
+      }
+      core.forEach(function (p) { var o2 = ctx.ap.pieza[p.id]; if (o2 && o2.n >= 2) { pz += (o2.s / o2.n - 3) / 2; pn++; } });
+      aprend = (np ? 0.1 * sm / np : 0) + (pn ? 0.04 * pz / pn : 0);
+      if (ctx.ap.exacto[nucleoK] >= 4) aprend += 0.06;
+    }
+    score += aprend;
     var ids = piezas.map(function (p) { return p.id; });
     var clave = claveIds(ids), pen = penEstilo;
-    ctx.h.conjuntos.forEach(function (c) { if (c.dias <= 14 && claveIds(c.ids) === clave) pen += 0.5; });
-    var recientes = piezas.filter(function (p) { return ctx.h.ultimo[p.id] !== undefined && ctx.h.ultimo[p.id] <= 2; }).length;
-    pen += Math.min(0.15, recientes * 0.05);
-    if (C.vistos[clave]) pen += 0.15;
+    if (!ctx.sinRuido) {
+      ctx.h.conjuntos.forEach(function (c) { if (c.dias <= 14 && claveIds(c.ids) === clave) pen += 0.5; });
+      var recientes = piezas.filter(function (p) { return ctx.h.ultimo[p.id] !== undefined && ctx.h.ultimo[p.id] <= 2; }).length;
+      pen += Math.min(0.15, recientes * 0.05);
+      if (C.vistos[clave]) pen += 0.15;
+      if (ctx.ap && ctx.ap.exacto[nucleoK] !== undefined && ctx.ap.exacto[nucleoK] <= 2) pen += 0.45;   // la valoraste mal: que no vuelva
+    }
     if (ctx.capaExtra && it.capa && nivel >= 2) pen -= 0.06; // lluvia o viento: mejor llevar capa
-    return { it: it, ids: ids, score: score - pen + Math.random() * 0.03, nov: nov, nivel: nivel };
+    return { it: it, ids: ids, score: score - pen + (ctx.sinRuido ? 0 : Math.random() * 0.03), nov: nov, nivel: nivel };
   }
 
   function nombresLista(ps) { return ps.map(function (p) { return "«" + p.nombre + "»"; }).join(", "); }
 
+  function estrellasTxt(n) { return new Array(n + 1).join("★"); }
+  function razonAprendida(it, ctx) {
+    if (!ctx.ap || !ctx.ap.n) return "";
+    var core = [it.arriba, it.abajo, it.uno, it.capa, it.capa2, it.calzado].filter(Boolean);
+    var e = ctx.ap.exacto[claveIds(core.map(function (p) { return p.id; }))];
+    if (e >= 4) return "Te gustó este look cuando lo valoraste (" + estrellasTxt(e) + ").";
+    var mejor = null;
+    for (var i = 0; i < core.length; i++) for (var j = i + 1; j < core.length; j++) {
+      var o = ctx.ap.par[[core[i].id, core[j].id].sort().join("|")];
+      if (o && o.s / o.n >= 4 && (!mejor || o.s / o.n > mejor.v)) mejor = { v: o.s / o.n, a: core[i], b: core[j] };
+    }
+    return mejor ? "«" + mejor.a.nombre + "» con «" + mejor.b.nombre + "» ya te gustó antes (" + Math.round(mejor.v * 10) / 10 + " ★ de media)." : "";
+  }
   function explicar(o, ctx) {
     var it = o.it, piezas = piezasDe(it), razones = [], avisos = [];
     var cols = [];
@@ -1548,6 +1595,7 @@
     if (sinColor.length) avisos.push("Sin color indicado en " + nombresLista(sinColor) + ": no he podido comprobar del todo si combinan.");
     var sinTalla = piezas.filter(function (p) { return !p.talla && !esComplemento(p); });
     if (sinTalla.length) avisos.push("Sin talla en " + nombresLista(sinTalla) + ": no he podido comprobar la talla.");
+    var apr = razonAprendida(it, ctx); if (apr) razones.unshift(apr);
     razones.push("Abrigo pensado para un día " + NIVEL_NOMBRE[o.nivel] + (it.capa2 ? ", con sudadera o jersey debajo del abrigo" : it.capa ? ", con una capa extra para el fresco" : "") + ".");
     if (ctx.h.hayHistorial) {
       var nunca = piezas.filter(function (p) { return ctx.h.ultimo[p.id] === undefined; });
@@ -1575,12 +1623,14 @@
     else if (fOc) { nivel = NIVEL_AUTO[temporadaActual(fechaDe(fOc))]; fuente = "auto_fecha"; }
     else { var au = nivelAutoActual(); nivel = au.nivel; fuente = au.fuente; }
     var rT = fOc ? null : resumenTiempo(C.dia);
-    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0, usaCalzado: !!aj.usaCalzado,
+    var ob = C.obligada ? inv.prendas.find(function (x) { return x.id === C.obligada; }) : null;
+    if (ob) ob = prendaEf(ob);
+    var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0, usaCalzado: !!aj.usaCalzado, ap: aprender(inv),
       capaExtra: !!(rT && (rT.probLluvia >= 50 || rT.vientoMax >= 30)) };
     var hayCalzadoVestir = inv.prendas.some(function (p) { return p.categoria === "Calzado" && esDeVestir(p); });
     var disp = inv.prendas.filter(function (p) {
       var ropa = p.categoria !== "Calzado" && p.categoria !== "Accesorios";
-      return (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, ajT) && !(nivel === 1 && p.abrigo === "calentito")
+      return (ob && p.id === ob.id) || (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, ajT) && !(nivel === 1 && p.abrigo === "calentito")
         && !(C.modo === "arreglado" && ropa && estiloDe(p) === 0)
         && !(oc && ((CAT_COMPLEMENTO.indexOf(p.categoria) < 0 && p.categoria !== "Calzado" && !esDeVestir(p)) || (p.categoria === "Calzado" && hayCalzadoVestir && !esDeVestir(p))));
     }).map(function (p) { var ef = catEf(p); return ef === p.categoria ? p : Object.assign({}, p, { categoria: ef }); });
@@ -1591,6 +1641,12 @@
     }
     var arribas = mejores(de(CAT_ARRIBA), 10), abajos = mejores(de(CAT_ABAJO), 10), unos = mejores(de(CAT_UNO), 8);
     var zapatos = aj.usaCalzado ? mejores(de(CAT_CALZADO), 8) : [], capas = nivel > 1 ? mejores(de(CAT_CAPA), 10) : [];
+    if (ob && CAT_ARRIBA.concat(CAT_ABAJO, CAT_UNO, CAT_CAPA, CAT_CALZADO, CAT_ACC, CAT_GORRO, CAT_CALCETIN, CAT_CALCETA).indexOf(ob.categoria) < 0) {
+      return { vacio: "No puedo combinar «" + ob.nombre + "» porque es de una categoría que no uso para armar looks.", nivel: nivel, fuente: fuente };
+    }
+    function forzar(lista, cats) { if (ob && cats.indexOf(ob.categoria) >= 0 && !lista.some(function (x) { return x.id === ob.id; })) lista.unshift(ob); }
+    forzar(arribas, CAT_ARRIBA); forzar(abajos, CAT_ABAJO); forzar(unos, CAT_UNO); forzar(zapatos, CAT_CALZADO); forzar(capas, CAT_CAPA);
+    var obComp = !!(ob && esComplemento(ob));
     function complementos(cats) { return de(cats).filter(function (p) { return sc(p, nivel) >= 0.7; }); }
     var accesorios = complementos(CAT_ACC), calcetines = complementos(CAT_CALCETIN), calcetas = complementos(CAT_CALCETA), gorros = complementos(CAT_GORRO);
 
@@ -1621,6 +1677,7 @@
       });
     });
 
+    if (ob && !obComp) cand = cand.filter(function (c) { return c.ids.indexOf(ob.id) >= 0; });
     if (!cand.length) {
       var falta = [];
       if (!unos.length) {
@@ -1632,7 +1689,7 @@
       else if (ctx.rechVaquero > 0 && ctx.rechEstilo === 0) msg = "Con tus prendas, las únicas combinaciones posibles mezclarían dos prendas vaqueras, y prefiero no proponerlas. Una prenda de otro tejido o color lo resolvería.";
       else if (ctx.rechEstilo > 0) msg = "Las combinaciones posibles mezclarían estilos muy distintos (por ejemplo, algo arreglado con algo deportivo), así que no te propongo ninguna. Una prenda de diario sirve de puente. Si alguna prenda tiene mal el estilo, corrígelo en Editar › Más detalles.";
       else msg = "No he encontrado ninguna combinación válida con tus prendas para este tiempo. Puede que las tallas no sean compatibles entre sí.";
-      return { vacio: msg, nivel: nivel, fuente: fuente };
+      return { vacio: (ob ? "Con «" + ob.nombre + "» no he podido formar un look. " : "") + msg, nivel: nivel, fuente: fuente };
     }
 
     cand.sort(function (a, b) { return b.score - a.score; });
@@ -1659,16 +1716,35 @@
       // Las calcetas (largas, hasta la rodilla) solo con perneras cortas: pantalón corto, peto o ranita corta, falda, vestido…
       var calc = mejorComplemento(calcetas.length && piernaCorta(o.it) ? calcetines.concat(calcetas) : calcetines, [o.it.calzado, Binf], h, 0.65);
       var gor = mejorComplemento(gorros, [Asup], h, 0.75);
+      if (obComp) {
+        if (CAT_ACC.indexOf(ob.categoria) >= 0) acc = ob; else if (CAT_GORRO.indexOf(ob.categoria) >= 0) gor = ob; else calc = ob;
+      }
       if (calc) { o.it.calcetin = calc; o.ids.push(calc.id); }
       if (gor) { o.it.gorro = gor; o.ids.push(gor.id); }
       if (acc) { o.it.acc = acc; o.ids.push(acc.id); }
       C.vistos[claveIds(o.ids)] = 1;
       var ex = explicar(o, ctx);
       o.razones = ex.razones; o.avisos = ex.avisos;
+      if (ob) {
+        o.obligada = ob.id;
+        o.razones.unshift("Incluye «" + ob.nombre + "», la prenda que has elegido.");
+        o.avisos = avisosObligada(ob, o, nivel, ajT, oc).concat(o.avisos);
+      }
     });
     return { lista: elegidos, nivel: nivel, fuente: fuente, hayHistorial: h.hayHistorial };
   }
 
+  function prendaEf(p) { var ef = catEf(p); return ef === p.categoria ? p : Object.assign({}, p, { categoria: ef }); }
+  function avisosObligada(ob, o, nivel, ajT, oc) {
+    var av = [];
+    if (sc(ob, nivel) <= 0) av.push("«" + ob.nombre + "» no es lo ideal para un día de " + NIVEL_NOMBRE[nivel] + " (es de " + (ob.temporada || "otra época") + "), pero la he incluido porque la has elegido.");
+    else if (nivel === 1 && ob.abrigo === "calentito") av.push("«" + ob.nombre + "» es calentita y hoy se espera calor.");
+    if (!tallaValida(ob, ajT)) av.push("«" + ob.nombre + "» puede no ser de su talla.");
+    if (ob.estado && ob.estado !== "disponible") av.push("«" + ob.nombre + "» está marcada como «" + ob.estado + "».");
+    if (oc && !esDeVestir(ob) && !esComplemento(ob)) av.push("«" + ob.nombre + "» no está marcada como prenda de vestir.");
+    if (ob.categoria === "Calcetas y leotardos" && !piernaCorta(o.it)) av.push("Las calcetas y leotardos suelen ir con pantalón corto, peto corto, falda o vestido.");
+    return av;
+  }
   function htmlConjunto(o, i) {
     var it = o.it, piezas = [];
     if (it.uno) piezas.push([it.uno, it.uno.categoria === "Monos" ? "Mono" : it.uno.categoria === "Vestidos" ? "Vestido" : "Conjunto"]);
@@ -1680,16 +1756,17 @@
     if (it.gorro) piezas.push([it.gorro, "Gorro"]);
     if (it.acc) piezas.push([it.acc, "Accesorio"]);
     var h = '<div class="conj" data-ids="' + esc(o.ids.join(",")) + '">'
-      + '<div class="conj-cab"><span>Propuesta ' + (i + 1) + '</span><span class="chip">' + etiquetaScore(o.score) + "</span></div>"
+      + '<div class="conj-cab"><span>' + (o.titulo || "Propuesta " + (i + 1)) + '</span><span class="chip">' + (o.chipTxt || etiquetaScore(o.score)) + "</span></div>"
         + (o.etq === "nuevo" ? '<p class="nota" style="margin:0 0 6px">Para no repetir prendas</p>' : o.etq === "pega" ? '<p class="nota" style="margin:0 0 6px">De las que mejor pegan</p>' : "")
       + '<div class="conj-fotos">';
     piezas.forEach(function (x) {
-      h += '<figure><div class="im"><img alt="' + esc(x[0].nombre) + '" data-mini="' + esc(x[0].id) + '"></div><figcaption>' + x[1] + "</figcaption></figure>";
+      h += '<figure><div class="im"><img alt="' + esc(x[0].nombre) + '" data-mini="' + esc(x[0].id) + '"></div><figcaption>' + x[1] + (o.obligada === x[0].id ? " 📌" : "") + "</figcaption></figure>";
     });
     h += "</div>";
     h += '<div class="conj-nombres">' + piezas.map(function (x) { return esc(x[0].nombre); }).join(" · ") + "</div>";
     h += '<ul class="razones">' + o.razones.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>";
     o.avisos.forEach(function (a) { h += '<div class="aviso-caja">' + esc(a) + "</div>"; });
+    h += htmlEstrellas(o.ids);
     h += '<div class="fila-btn"><button class="btn sec" data-hoy="' + i + '">' + (fechaOcasion() ? "Guardar para el " + esc(fechaCorta(fechaOcasion())) : C.dia ? "Se lo pone mañana" : "Se lo pone hoy") + '</button><button class="btn sec" data-favc="' + i + '" style="flex:0 0 auto;width:auto;padding:15px 18px">♡ Favorito</button></div></div>';
     return h;
   }
@@ -1722,14 +1799,15 @@
     C.resultados = r.lista;
     var h = '<p class="nota">' + cab + (r.hayHistorial ? "" : " Todavía no hay historial: cuando guardes los conjuntos que lleva, evitaré repetirlos y daré prioridad a lo que menos usa.") + "</p>";
     r.lista.forEach(function (o, i) { h += htmlConjunto(o, i); });
-    h += '<p class="nota">Pulsa «Crear conjuntos» otra vez para ver otras propuestas.</p>';
+    var nVal = (S.inv.valoraciones || []).length;
+    h += '<p class="nota">Pulsa «Crear conjuntos» otra vez para ver otras propuestas.' + (nVal ? " He aprendido de tus " + nVal + " valoraciones con estrellas." : " Puedes puntuar cada propuesta con estrellas y aprenderé lo que más te gusta.") + "</p>";
     cont.innerHTML = h;
     cargarMinis(cont);
     $("btnCrear").textContent = "Crear otras propuestas";
   }
 
   async function guardarHoy(i) {
-    var o = C.resultados[i];
+    var o = i === "mio" ? C.mioRes : C.resultados[i];
     if (!o) return;
     var fo = fechaOcasion(), f = fo || fechaHoy(C.dia), cuando = fo ? "el " + fechaCorta(fo) : C.dia ? "mañana" : "hoy";
     var ya = (S.inv.calendario || []).some(function (e) { return e.fecha === f; });
@@ -2134,7 +2212,7 @@
         + '<div class="fila-btn" style="margin-top:8px"><button class="btn sec" data-fc="guardaocasion">Guardar ocasión y fecha</button></div></div></details>';
       return '<div class="conj" data-cid="' + esc(c.id) + '"><div class="conj-cab"><span>' + esc(c.nombre) + "</span></div>" + infoOc
         + avisos.map(function (a) { return '<div class="aviso-caja">' + esc(a) + "</div>"; }).join("")
-        + (ps.length ? htmlPiezas(ps) : '<p class="nota">Las prendas de este conjunto ya no existen.</p>') + formOc
+        + (ps.length ? htmlPiezas(ps) : '<p class="nota">Las prendas de este conjunto ya no existen.</p>') + (ps.length ? htmlEstrellas(c.prendas) : "") + formOc
         + '<div class="fila-btn"><button class="btn sec" data-fc="hoy">Hoy</button><button class="btn sec" data-fc="manana">Mañana</button></div>'
         + '<div class="fila-btn"><button class="btn sec" data-fc="renombrar">Cambiar nombre</button><button class="btn peligro" data-fc="borrar">Eliminar</button></div></div>';
     }).join("");
@@ -2717,6 +2795,12 @@
   }
   function fechaOcasion() { return C.modo === "ocasion" && C.ocasionFecha && C.ocasionFecha !== fechaHoy(0) ? C.ocasionFecha : ""; }
   function pintarControlesConjuntos() {
+    if (C.obligada && !S.inv.prendas.some(function (x) { return x.id === C.obligada; })) C.obligada = "";
+    $("selObligada").innerHTML = opcionesPrendas(null, C.obligada, "Ninguna");
+    pintarPares($("segQuien"), [["proponer", "Que me propongas looks"], ["mio", "Crear el mío"]], C.quien);
+    $("bloqueProponer1").hidden = $("bloqueProponer2").hidden = C.quien === "mio";
+    $("panelMio").hidden = C.quien !== "mio";
+    if (C.quien === "mio") pintarMio();
     $("panelOcasion").hidden = C.modo !== "ocasion";
     if (C.modo === "ocasion") {
       $("selOcasion").innerHTML = htmlOpcionesOcasion(C.ocasion);
@@ -2740,6 +2824,183 @@
       else nota = "No tengo el tiempo ahora mismo, así que uso la época del año (día «" + NIVEL_NOMBRE[au.nivel] + "»). Puedes elegirlo a mano.";
     }
     $("notaNivel").textContent = nota;
+  }
+
+  // ================= Valoraciones con estrellas y aprendizaje =================
+  function nucleoIds(ids) {
+    return ids.filter(function (id) {
+      var p = S.inv.prendas.find(function (x) { return x.id === id; });
+      return p && CAT_COMPLEMENTO.indexOf(catEf(p)) < 0;
+    });
+  }
+  function valoracionDe(ids) {
+    var k = claveIds(nucleoIds(ids));
+    var v = (S.inv.valoraciones || []).find(function (x) { return x.nucleo === k; });
+    return v ? v.estrellas : 0;
+  }
+  function aprender(inv) {
+    var ap = { par: {}, pieza: {}, exacto: {}, n: 0 };
+    (inv.valoraciones || []).forEach(function (v) {
+      var ids = (v.nucleo || "").split("|").filter(Boolean);
+      if (!ids.length || !(v.estrellas >= 1)) return;
+      ap.n++; ap.exacto[v.nucleo] = v.estrellas;
+      ids.forEach(function (a) { var o = ap.pieza[a] = ap.pieza[a] || { s: 0, n: 0 }; o.s += v.estrellas; o.n++; });
+      for (var i = 0; i < ids.length; i++) for (var j = i + 1; j < ids.length; j++) {
+        var k = [ids[i], ids[j]].sort().join("|"), o2 = ap.par[k] = ap.par[k] || { s: 0, n: 0 };
+        o2.s += v.estrellas; o2.n++;
+      }
+    });
+    return ap;
+  }
+  function htmlEstrellas(ids) {
+    var n = valoracionDe(ids), h = '<div class="estrellas" data-ids="' + esc(ids.join(",")) + '"><span class="nota" style="margin:0 6px 0 0">¿Qué te parece?</span>';
+    for (var i = 1; i <= 5; i++) h += '<button type="button" data-n="' + i + '" aria-label="' + i + ' estrellas"' + (i <= n ? ' class="on"' : "") + ">★</button>";
+    return h + "</div>";
+  }
+  function pintarEstrellas(ids) {
+    var k = claveIds(nucleoIds(ids)), n = valoracionDe(ids);
+    document.querySelectorAll(".estrellas").forEach(function (el) {
+      if (claveIds(nucleoIds(el.getAttribute("data-ids").split(","))) !== k) return;
+      el.querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", +b.getAttribute("data-n") <= n); });
+    });
+  }
+  async function valorar(ids, n) {
+    var k = claveIds(nucleoIds(ids)); if (!k) return;
+    if (valoracionDe(ids) === n) n = 0;
+    try {
+      await modificarInv(function (inv) {
+        inv.valoraciones = (inv.valoraciones || []).filter(function (v) { return v.nucleo !== k; });
+        if (n > 0) inv.valoraciones.push({ nucleo: k, estrellas: n, fecha: new Date().toISOString() });
+        if (inv.valoraciones.length > 400) inv.valoraciones = inv.valoraciones.slice(-400);
+      });
+      pintarEstrellas(ids);
+      toast(n ? "Anotado: " + estrellasTxt(n) + ". Lo tendré en cuenta en tus próximos looks." : "Valoración quitada");
+    } catch (e) { toast("No se pudo guardar: " + e.message); }
+  }
+
+  // ================= Crear mi propio conjunto =================
+  var SLOTS_MIO = [
+    ["arriba", "Arriba (body, camiseta, camisa)", CAT_ARRIBA], ["abajo", "Abajo (pantalón, peto)", CAT_ABAJO],
+    ["uno", "O una pieza única (mono, vestido, conjunto)", CAT_UNO], ["capa", "Capa (sudadera, jersey, chaqueta…)", CAT_CAPA],
+    ["capa2", "Abrigo encima (solo si hace mucho frío)", CAT_CAPA], ["calzado", "Calzado", CAT_CALZADO],
+    ["calcetin", "Calcetines o calcetas", CAT_CALCETIN.concat(CAT_CALCETA)], ["gorro", "Gorro", CAT_GORRO], ["acc", "Accesorio", CAT_ACC]
+  ];
+  function opcionesPrendas(cats, sel, vacio) {
+    function o(p) { return '<option value="' + esc(p.id) + '"' + (p.id === sel ? " selected" : "") + ">" + esc(p.nombre + (p.color ? " · " + p.color : "") + (p.talla ? " · " + p.talla : "")) + "</option>"; }
+    var h = '<option value="">' + vacio + "</option>";
+    var lista = S.inv.prendas.filter(function (p) { return p.estado !== "devuelta" && (!cats || cats.indexOf(catEf(p)) >= 0); });
+    if (!cats) {
+      var grupos = {};
+      lista.forEach(function (p) { (grupos[p.categoria] = grupos[p.categoria] || []).push(p); });
+      Object.keys(grupos).sort().forEach(function (g) { h += '<optgroup label="' + esc(g) + '">' + grupos[g].map(o).join("") + "</optgroup>"; });
+    } else h += lista.map(o).join("");
+    return h;
+  }
+  function pintarMio() {
+    var h = "";
+    SLOTS_MIO.forEach(function (sl) {
+      h += '<div class="campo"><label for="mio_' + sl[0] + '">' + sl[1] + '</label><select id="mio_' + sl[0] + '" data-slot="' + sl[0] + '">' + opcionesPrendas(sl[2], C.mio[sl[0]] || "", "— ninguna —") + "</select></div>";
+    });
+    $("mioSlots").innerHTML = h;
+  }
+  // Reglas que un buen estilista no se salta
+  function reglasAvisos(it, nv) {
+    var av = [], grave = false, ropa = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(Boolean);
+    function g(t) { av.push(t); grave = true; }
+    var capaPunto = it.capa && (it.capa.categoria === "Sudaderas" || it.capa.categoria === "Jerséis");
+    if (capaPunto && !it.arriba && !it.uno) g("Debajo de la sudadera o el jersey iría un body o una camiseta.");
+    if (it.capa2 && !it.capa) g("El abrigo extra solo tiene sentido sobre una sudadera o un jersey. Si es tu única capa, ponlo en «Capa».");
+    if (it.capa2 && it.capa && (nv < 4 || !esCapaGruesa(it.capa2) || it.capa2.categoria !== "Abrigos y chaquetas")) g("Sobre una sudadera o un jersey no suele ir nada más, salvo un abrigo grueso cuando hace mucho frío.");
+    if (it.capa && !capaPunto && it.capa2) { /* ya avisado arriba */ }
+    if (it.calcetin && it.calcetin.categoria === "Calcetas y leotardos" && !piernaCorta(it)) g("Las calcetas y leotardos solo suelen ir con pantalón corto, peto corto, falda o vestido.");
+    ropa.concat(it.calzado ? [it.calzado] : []).forEach(function (p) {
+      if (sc(p, nv) <= 0) av.push("«" + p.nombre + "» no es para un día de " + NIVEL_NOMBRE[nv] + " (es de " + (p.temporada || "otra época") + ").");
+    });
+    if (nv === 1 && ropa.some(function (p) { return p.abrigo === "calentito"; })) av.push("Hay prendas calentitas y se espera calor.");
+    var alto = (it.arriba ? calidez(it.arriba) : it.uno ? calidez(it.uno) : 0) + (it.capa || it.capa2 ? Math.max(it.capa ? calidez(it.capa) : 0, it.capa2 ? calidez(it.capa2) : 0) + (it.capa && it.capa2 ? 0.5 : 0) : 0);
+    if (alto - nv > 1.5) av.push("Va muy abrigado para un día de " + NIVEL_NOMBRE[nv] + ".");
+    else if (nv - alto > 1.5) av.push("Va poco abrigado para un día de " + NIVEL_NOMBRE[nv] + ".");
+    return { avisos: av, graves: grave };
+  }
+  function mejorasPara(it, ctx, s0) {
+    var res = [], aj = S.inv.ajustes || {};
+    function probar(slot, cats) {
+      var mejor = null;
+      S.inv.prendas.forEach(function (raw) {
+        var p = prendaEf(raw);
+        if ((it[slot] && p.id === it[slot].id) || (raw.estado && raw.estado !== "disponible") || cats.indexOf(p.categoria) < 0 || sc(p, ctx.nivel) <= 0 || !tallaValida(p, aj)) return;
+        var it2 = Object.assign({}, it); it2[slot] = p;
+        if (piezasDe(it2).filter(function (x) { return x.id === p.id; }).length > 1) return;
+        var r = evaluar(it2, Object.assign({}, ctx, { rechEstilo: 0, rechVaquero: 0 }));
+        if (!r || reglasAvisos(it2, ctx.nivel).graves) return;
+        if (!mejor || r.score > mejor.s) mejor = { p: p, s: r.score };
+      });
+      return mejor;
+    }
+    [["arriba", CAT_ARRIBA], ["abajo", CAT_ABAJO], ["capa", CAT_CAPA], ["calzado", CAT_CALZADO]].forEach(function (g) {
+      if (!it[g[0]]) return;
+      var m = probar(g[0], g[1]);
+      if (m && m.s - s0 >= 0.04) res.push({ slot: g[0], de: it[g[0]], a: m.p, gana: m.s - s0 });
+    });
+    if (!it.capa && !it.capa2 && ctx.nivel >= 3) {
+      var mc = probar("capa", CAT_CAPA);
+      if (mc && mc.s - s0 >= 0.03) res.push({ slot: "capa", de: null, a: mc.p, gana: mc.s - s0, falta: "una capa para un día de " + NIVEL_NOMBRE[ctx.nivel] });
+    }
+    if (!it.calzado && ctx.usaCalzado) {
+      var mz = probar("calzado", CAT_CALZADO);
+      if (mz) res.push({ slot: "calzado", de: null, a: mz.p, gana: 0.01, falta: "calzado" });
+    }
+    res.sort(function (a, b) { return b.gana - a.gana; });
+    return res.slice(0, 3);
+  }
+  function opinar() {
+    var cont = $("mioResultado"), it = {};
+    SLOTS_MIO.forEach(function (sl) { it[sl[0]] = null; var id = C.mio[sl[0]]; if (id) { var p = S.inv.prendas.find(function (x) { return x.id === id; }); if (p) it[sl[0]] = prendaEf(p); } });
+    function msg(t) { C.mioRes = null; cont.innerHTML = '<div class="vacio-caja">' + esc(t) + "</div>"; }
+    if (!it.uno && !(it.arriba && it.abajo)) return msg("Elige al menos una parte de arriba y una de abajo (o una pieza única) para poder opinar.");
+    if (it.uno && (it.arriba || it.abajo)) return msg("Has elegido una pieza única y también una parte de arriba o de abajo. Quédate con una de las dos opciones.");
+    var aj = S.inv.ajustes || {}, nv = C.nivel !== "auto" ? parseInt(C.nivel, 10) : nivelAutoActual().nivel;
+    var ctx = { nivel: nv, modo: "hoy", h: historial(S.inv, new Date()), rechEstilo: 0, rechVaquero: 0, usaCalzado: !!aj.usaCalzado, capaExtra: false, ap: aprender(S.inv), sinRuido: true };
+    var reglas = reglasAvisos(it, nv), ev = evaluar(it, ctx), piezas = piezasDe(it);
+    var o = ev || { it: it, ids: piezas.map(function (p) { return p.id; }), score: 0, nivel: nv };
+    var razones = [], avisos = [];
+    if (ev) { var ex = explicar(o, ctx); razones = ex.razones.filter(function (r) { return !/^Incluye prendas que aún no|sin usarse\.$/.test(r); }); avisos = ex.avisos; }
+    else if (ctx.rechEstilo) avisos.push("Mezcla una prenda muy arreglada con otra muy deportiva: no pegan.");
+    else if (ctx.rechVaquero) avisos.push("Lleva dos prendas vaqueras juntas, y no suele quedar bien.");
+    else avisos.push("Las tallas de las prendas no encajan entre sí.");
+    o.razones = razones; o.avisos = reglas.avisos.concat(avisos);
+    var s = ev ? ev.score : 0, grave = reglas.graves || !ev, v;
+    if (!ev) v = ["No lo veo claro", "🤔"];
+    else if (s >= 0.8 && !grave) v = ["¡Muy bien combinado!", "🌟"];
+    else if (s >= 0.68 && !grave) v = ["Está bien combinado", "👍"];
+    else if (s >= 0.55 || (grave && s >= 0.45)) v = ["Se puede mejorar", "🙂"];
+    else v = ["No lo veo claro", "🤔"];
+    o.titulo = "Tu conjunto"; o.chipTxt = ev ? Math.max(0, Math.min(10, Math.round(s * 10))) + "/10" : "—";
+    C.mioRes = o;
+    var mej = mejorasPara(it, ctx, s);
+    var h = '<div class="veredicto">' + v[1] + " " + esc(v[0]) + "</div>" + htmlConjunto(o, "mio");
+    if (mej.length) {
+      h += '<div class="card"><b>Ideas para mejorarlo</b><ul class="razones">';
+      mej.forEach(function (m) {
+        var t = m.falta ? "Te falta " + m.falta + ": prueba con «" + m.a.nombre + "»." : "Prueba con «" + m.a.nombre + "» en lugar de «" + m.de.nombre + "»: combina mejor.";
+        h += "<li>" + esc(t) + ' <button class="btn sec" style="width:auto;padding:6px 12px;margin:6px 0 0" data-swap="' + esc(m.slot + "|" + m.a.id) + '">Probar este cambio</button></li>';
+      });
+      h += "</ul></div>";
+    } else if (ev && !grave && s >= 0.68) h += '<p class="nota">No veo ningún cambio que lo mejore claramente.</p>';
+    cont.innerHTML = h; cargarMinis(cont);
+  }
+  function clickResultados(e) {
+    var b = e.target.closest("[data-hoy]"); if (b) { var k = b.getAttribute("data-hoy"); guardarHoy(k === "mio" ? "mio" : parseInt(k, 10)); return; }
+    var f = e.target.closest("[data-favc]");
+    if (f) {
+      var k2 = f.getAttribute("data-favc"), ro = k2 === "mio" ? C.mioRes : C.resultados[parseInt(k2, 10)];
+      if (!ro) return;
+      if (C.modo === "ocasion" && k2 !== "mio") guardarFavorito(ro.ids, ocasionNombre() + (C.ocasionFecha ? " " + fechaCorta(C.ocasionFecha) : ""), { ocasion: ocasionNombre(), fecha: C.ocasionFecha || "" });
+      else guardarFavorito(ro.ids, k2 === "mio" ? "Mi conjunto" : undefined);
+      return;
+    }
+    var sw = e.target.closest("[data-swap]");
+    if (sw) { var pr = sw.getAttribute("data-swap").split("|"); C.mio[pr[0]] = pr[1]; pintarMio(); opinar(); }
   }
   function prepararConjuntos() {
     pintarControlesConjuntos();
@@ -2870,14 +3131,22 @@
     $("selTallaCalzado").addEventListener("change", function (e) { guardarAjuste("tallaCalzado", e.target.value); });
     $("selUsaCalzado").addEventListener("change", function (e) { guardarAjuste("usaCalzado", e.target.value === "si"); });
     $("btnCrear").addEventListener("click", crearConjuntos);
-    $("resultados").addEventListener("click", function (e) {
-      var b = e.target.closest("[data-hoy]"); if (b) { guardarHoy(parseInt(b.getAttribute("data-hoy"), 10)); return; }
-      var f = e.target.closest("[data-favc]");
-      if (f && C.resultados[parseInt(f.getAttribute("data-favc"), 10)]) {
-        var ro = C.resultados[parseInt(f.getAttribute("data-favc"), 10)];
-        if (C.modo === "ocasion") guardarFavorito(ro.ids, ocasionNombre() + (C.ocasionFecha ? " " + fechaCorta(C.ocasionFecha) : ""), { ocasion: ocasionNombre(), fecha: C.ocasionFecha || "" });
-        else guardarFavorito(ro.ids);
-      }
+    $("resultados").addEventListener("click", clickResultados);
+    $("mioResultado").addEventListener("click", clickResultados);
+    $("segQuien").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      C.quien = b.getAttribute("data-v"); pintarControlesConjuntos();
+    });
+    $("selObligada").addEventListener("change", function () {
+      C.obligada = $("selObligada").value; C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos";
+      var p = C.obligada && S.inv.prendas.find(function (x) { return x.id === C.obligada; });
+      $("notaObligada").textContent = p ? "Los looks llevarán «" + p.nombre + "». Pulsa «Crear conjuntos»." : "Elige una prenda y te propongo looks que la lleven.";
+    });
+    $("mioSlots").addEventListener("change", function (e) { var sl = e.target.getAttribute("data-slot"); if (sl) C.mio[sl] = e.target.value; });
+    $("btnOpinar").addEventListener("click", opinar);
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest(".estrellas button"); if (!b) return;
+      valorar(b.closest(".estrellas").getAttribute("data-ids").split(","), +b.getAttribute("data-n"));
     });
 
     $("btnCopiaDropbox").addEventListener("click", copiaDropbox);
@@ -2927,6 +3196,7 @@
       if (acc === "devuelta") marcarDevuelta(id);
       if (acc === "ver") abrirDetalle(id);
       if (acc === "favconj") guardarConjuntoComprado(id);
+      if (acc === "looks") { cerrarDetalle(); C.obligada = id; C.quien = "proponer"; C.vistos = {}; irA("conjuntos"); $("btnCrear").textContent = "Crear conjuntos"; setTimeout(function () { $("selObligada").value = id; crearConjuntos(); }, 50); }
       if (acc === "editar") {
         var p = S.inv.prendas.find(function (x) { return x.id === id; });
         cerrarDetalle(); prepararFormulario(p); irA("anadir");
