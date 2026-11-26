@@ -212,6 +212,8 @@
   .cal-dia.con::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--salvia-osc); }
   .cal-dia.sel.con::after { background: #fff; }
   .fila-btn { display: flex; gap: 8px; }
+  .otro-dia { position: relative; display: block; text-align: center; margin-top: 8px; overflow: hidden; cursor: pointer; }
+  .otro-dia input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
   .fila-btn .btn { margin-top: 8px; }
   .selp { cursor: pointer; }
   .selp .im { position: relative; border: 2px solid transparent; }
@@ -1792,7 +1794,8 @@
     h += '<ul class="razones">' + o.razones.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>";
     o.avisos.forEach(function (a) { h += '<div class="aviso-caja">' + esc(a) + "</div>"; });
     h += htmlEstrellas(o.ids);
-    h += '<div class="fila-btn"><button class="btn sec" data-hoy="' + i + '">' + (fechaOcasion() ? "Guardar para el " + esc(fechaCorta(fechaOcasion())) : C.dia ? "Se lo pone mañana" : "Se lo pone hoy") + '</button><button class="btn sec" data-favc="' + i + '" style="flex:0 0 auto;width:auto;padding:15px 18px">♡ Favorito</button></div></div>';
+    h += '<div class="fila-btn"><button class="btn sec" data-hoy="' + i + '">' + (fechaOcasion() ? "Guardar para el " + esc(fechaCorta(fechaOcasion())) : C.dia ? "Se lo pone mañana" : "Se lo pone hoy") + '</button><button class="btn sec" data-favc="' + i + '" style="flex:0 0 auto;width:auto;padding:15px 18px">♡ Favorito</button></div>'
+      + '<label class="btn sec otro-dia">📅 Elegir otro día<input type="date" data-fechaotro="' + i + '" min="' + fechaHoy(0) + '"></label></div>';
     return h;
   }
 
@@ -1831,10 +1834,10 @@
     $("btnCrear").textContent = "Crear otras propuestas";
   }
 
-  async function guardarHoy(i) {
+  async function guardarHoy(i, fechaElegida) {
     var o = i === "mio" ? C.mioRes : C.resultados[i];
     if (!o) return;
-    var fo = fechaOcasion(), f = fo || fechaHoy(C.dia), cuando = fo ? "el " + fechaCorta(fo) : C.dia ? "mañana" : "hoy";
+    var fo = fechaElegida || fechaOcasion(), f = fo || fechaHoy(C.dia), cuando = fo ? "el " + fechaCorta(fo) : C.dia ? "mañana" : "hoy";
     var ya = (S.inv.calendario || []).some(function (e) { return e.fecha === f; });
     if (ya && !confirm("Ya hay un conjunto guardado para " + cuando + ". ¿Quieres sustituirlo?")) return;
     try {
@@ -3250,6 +3253,13 @@
     $("btnCrear").addEventListener("click", crearConjuntos);
     $("resultados").addEventListener("click", clickResultados);
     $("mioResultado").addEventListener("click", clickResultados);
+    function cambioFecha(e) {
+      var d = e.target.closest("[data-fechaotro]"); if (!d || !d.value) return;
+      var k = d.getAttribute("data-fechaotro"), v = d.value; d.value = "";
+      guardarHoy(k === "mio" ? "mio" : parseInt(k, 10), v);
+    }
+    $("resultados").addEventListener("change", cambioFecha);
+    $("mioResultado").addEventListener("change", cambioFecha);
     $("segQuien").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
       C.quien = b.getAttribute("data-v"); pintarControlesConjuntos();
