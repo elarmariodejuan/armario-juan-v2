@@ -369,7 +369,7 @@
       <label for="ocasionFecha" style="margin-top:12px;display:block">Fecha (opcional)</label><input type="date" id="ocasionFecha">
       <p class="nota" id="notaOcasion" style="margin-top:8px"></p>
     </div>
-    <div class="campo"><label for="selObligada">📌 Prenda que quiero que salga sí o sí (opcional)</label><select id="selObligada"></select><p class="nota" id="notaObligada" style="margin-top:6px">Elige una prenda y te propongo looks que la lleven.</p></div>
+    <div class="campo"><label for="selObligada">📌 Prendas que quiero que salgan sí o sí (opcional)</label><div id="chipsObligadas" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div><select id="selObligada"></select><p class="nota" id="notaObligada" style="margin-top:6px">Elige una o varias prendas y te propongo looks que las lleven, completando el resto.</p></div>
     </div>
     <div class="campo"><span class="etq">¿Qué tiempo hace?</span><div class="seg wrap" id="segNivel"></div><p class="nota" id="notaNivel" style="margin-top:8px"></p></div>
     <details class="mas">
@@ -1314,7 +1314,7 @@
     3: { "otoño": 1, primavera: 0.8, invierno: 0.7, verano: 0 },
     4: { invierno: 1, "otoño": 0.6, primavera: 0.15, verano: 0 }
   };
-  var C = { modo: "hoy", nivel: "auto", dia: 0, resultados: [], vistos: {}, ocasion: "", ocasionOtra: "", ocasionFecha: "", obligada: "", quien: "proponer", mio: {}, mioRes: null };
+  var C = { modo: "hoy", nivel: "auto", dia: 0, resultados: [], vistos: {}, ocasion: "", ocasionOtra: "", ocasionFecha: "", obligadas: [], quien: "proponer", mio: {}, mioRes: null };
 
   function temporadaActual(d) {
     var m = d.getMonth();
@@ -1648,14 +1648,14 @@
     else if (fOc) { nivel = NIVEL_AUTO[temporadaActual(fechaDe(fOc))]; fuente = "auto_fecha"; }
     else { var au = nivelAutoActual(); nivel = au.nivel; fuente = au.fuente; }
     var rT = fOc ? null : resumenTiempo(C.dia);
-    var ob = C.obligada ? inv.prendas.find(function (x) { return x.id === C.obligada; }) : null;
-    if (ob) ob = prendaEf(ob);
+    var obs = (C.obligadas || []).map(function (id) { return inv.prendas.find(function (x) { return x.id === id; }); }).filter(Boolean).map(prendaEf);
+    var ob = obs[0] || null;
     var h = historial(inv, hoy), ctx = { nivel: nivel, modo: C.modo, h: h, rechEstilo: 0, rechVaquero: 0, usaCalzado: !!aj.usaCalzado, ap: aprender(inv),
       capaExtra: !!(rT && (rT.probLluvia >= 50 || rT.vientoMax >= 30)) };
     var hayCalzadoVestir = inv.prendas.some(function (p) { return p.categoria === "Calzado" && esDeVestir(p); });
     var disp = inv.prendas.filter(function (p) {
       var ropa = p.categoria !== "Calzado" && p.categoria !== "Accesorios";
-      return (ob && p.id === ob.id) || (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, ajT) && !(nivel === 1 && p.abrigo === "calentito")
+      return obs.some(function (q) { return q.id === p.id; }) || (!p.estado || p.estado === "disponible") && sc(p, nivel) > 0 && tallaValida(p, ajT) && !(nivel === 1 && p.abrigo === "calentito")
         && !(C.modo === "arreglado" && ropa && estiloDe(p) === 0)
         && !(oc && ((CAT_COMPLEMENTO.indexOf(p.categoria) < 0 && p.categoria !== "Calzado" && !esDeVestir(p)) || (p.categoria === "Calzado" && hayCalzadoVestir && !esDeVestir(p))));
     }).map(function (p) { var ef = catEf(p); return ef === p.categoria ? p : Object.assign({}, p, { categoria: ef }); });
@@ -1666,12 +1666,12 @@
     }
     var arribas = mejores(de(CAT_ARRIBA), 14), abajos = mejores(de(CAT_ABAJO), 14), unos = mejores(de(CAT_UNO), 10);
     var zapatos = aj.usaCalzado ? mejores(de(CAT_CALZADO), 8) : [], capas = nivel > 1 ? mejores(de(CAT_CAPA), 10) : [];
-    if (ob && CAT_ARRIBA.concat(CAT_ABAJO, CAT_UNO, CAT_CAPA, CAT_CALZADO, CAT_ACC, CAT_GORRO, CAT_CALCETIN, CAT_CALCETA).indexOf(ob.categoria) < 0) {
-      return { vacio: "No puedo combinar «" + ob.nombre + "» porque es de una categoría que no uso para armar looks.", nivel: nivel, fuente: fuente };
-    }
-    function forzar(lista, cats) { if (ob && cats.indexOf(ob.categoria) >= 0 && !lista.some(function (x) { return x.id === ob.id; })) lista.unshift(ob); }
+    var catsOk = CAT_ARRIBA.concat(CAT_ABAJO, CAT_UNO, CAT_CAPA, CAT_CALZADO, CAT_ACC, CAT_GORRO, CAT_CALCETIN, CAT_CALCETA);
+    var rara = obs.filter(function (q) { return catsOk.indexOf(q.categoria) < 0; })[0];
+    if (rara) return { vacio: "No puedo combinar «" + rara.nombre + "» porque es de una categoría que no uso para armar looks.", nivel: nivel, fuente: fuente };
+    function forzar(lista, cats) { obs.forEach(function (q) { if (cats.indexOf(q.categoria) >= 0 && !lista.some(function (x) { return x.id === q.id; })) lista.unshift(q); }); }
     forzar(arribas, CAT_ARRIBA); forzar(abajos, CAT_ABAJO); forzar(unos, CAT_UNO); forzar(zapatos, CAT_CALZADO); forzar(capas, CAT_CAPA);
-    var obComp = !!(ob && esComplemento(ob));
+    var obsRopa = obs.filter(function (q) { return !esComplemento(q); }), obsComp = obs.filter(esComplemento);
     function complementos(cats) { return de(cats).filter(function (p) { return sc(p, nivel) >= 0.7; }); }
     var accesorios = complementos(CAT_ACC), calcetines = complementos(CAT_CALCETIN), calcetas = complementos(CAT_CALCETA), gorros = complementos(CAT_GORRO);
 
@@ -1702,7 +1702,7 @@
       });
     });
 
-    if (ob && !obComp) cand = cand.filter(function (c) { return c.ids.indexOf(ob.id) >= 0; });
+    if (obsRopa.length) cand = cand.filter(function (c) { return obsRopa.every(function (q) { return c.ids.indexOf(q.id) >= 0; }); });
     if (!cand.length) {
       var falta = [];
       if (!unos.length) {
@@ -1714,7 +1714,7 @@
       else if (ctx.rechVaquero > 0 && ctx.rechEstilo === 0) msg = "Con tus prendas, las únicas combinaciones posibles mezclarían dos prendas vaqueras, y prefiero no proponerlas. Una prenda de otro tejido o color lo resolvería.";
       else if (ctx.rechEstilo > 0) msg = "Las combinaciones posibles mezclarían estilos muy distintos (por ejemplo, algo arreglado con algo deportivo), así que no te propongo ninguna. Una prenda de diario sirve de puente. Si alguna prenda tiene mal el estilo, corrígelo en Editar › Más detalles.";
       else msg = "No he encontrado ninguna combinación válida con tus prendas para este tiempo. Puede que las tallas no sean compatibles entre sí.";
-      return { vacio: (ob ? "Con «" + ob.nombre + "» no he podido formar un look. " : "") + msg, nivel: nivel, fuente: fuente };
+      return { vacio: (obs.length ? (obs.length > 1 ? "Con esas prendas juntas (" + obs.map(function (q) { return "«" + q.nombre + "»"; }).join(", ") + ") no he podido formar un look; prueba con menos prendas. " : "Con «" + ob.nombre + "» no he podido formar un look. ") : "") + msg, nivel: nivel, fuente: fuente };
     }
 
     cand.sort(function (a, b) { return b.score - a.score; });
@@ -1744,19 +1744,19 @@
       // Las calcetas (largas, hasta la rodilla) solo con perneras cortas: pantalón corto, peto o ranita corta, falda, vestido…
       var calc = mejorComplemento(calcetas.length && piernaCorta(o.it) ? calcetines.concat(calcetas) : calcetines, [o.it.calzado, Binf], h, 0.65);
       var gor = mejorComplemento(gorros, [Asup], h, 0.75);
-      if (obComp) {
-        if (CAT_ACC.indexOf(ob.categoria) >= 0) acc = ob; else if (CAT_GORRO.indexOf(ob.categoria) >= 0) gor = ob; else calc = ob;
-      }
+      obsComp.forEach(function (q) {
+        if (CAT_ACC.indexOf(q.categoria) >= 0) acc = q; else if (CAT_GORRO.indexOf(q.categoria) >= 0) gor = q; else calc = q;
+      });
       if (calc) { o.it.calcetin = calc; o.ids.push(calc.id); }
       if (gor) { o.it.gorro = gor; o.ids.push(gor.id); }
       if (acc) { o.it.acc = acc; o.ids.push(acc.id); }
       C.vistos[claveIds(o.ids)] = 1;
       var ex = explicar(o, ctx);
       o.razones = ex.razones; o.avisos = ex.avisos;
-      if (ob) {
-        o.obligada = ob.id;
-        o.razones.unshift("Incluye «" + ob.nombre + "», la prenda que has elegido.");
-        o.avisos = avisosObligada(ob, o, nivel, ajT, oc).concat(o.avisos);
+      if (obs.length) {
+        o.obligadas = obs.map(function (q) { return q.id; });
+        o.razones.unshift(obs.length > 1 ? "Incluye las prendas que has elegido: " + obs.map(function (q) { return "«" + q.nombre + "»"; }).join(", ") + "." : "Incluye «" + ob.nombre + "», la prenda que has elegido.");
+        obs.forEach(function (q) { o.avisos = avisosObligada(q, o, nivel, ajT, oc).concat(o.avisos); });
       }
     });
     return { lista: elegidos, nivel: nivel, fuente: fuente, hayHistorial: h.hayHistorial, ctx: ctx };
@@ -1787,7 +1787,7 @@
       + '<div class="conj-cab"><span>' + (o.titulo || "Propuesta " + (i + 1)) + '</span><span class="chip">' + (o.chipTxt || etiquetaScore(o.score)) + "</span></div>"
       + '<div class="conj-fotos">';
     piezas.forEach(function (x) {
-      h += '<figure><div class="im"><img alt="' + esc(x[0].nombre) + '" data-mini="' + esc(x[0].id) + '"></div><figcaption>' + x[1] + (o.obligada === x[0].id ? " 📌" : "") + "</figcaption>" + (typeof i === "number" ? '<button type="button" class="cambiar" data-cambiar="' + x[2] + '" data-i="' + i + '">↻ Cambiar</button>' : "") + "</figure>";
+      h += '<figure><div class="im"><img alt="' + esc(x[0].nombre) + '" data-mini="' + esc(x[0].id) + '"></div><figcaption>' + x[1] + ((o.obligadas || []).indexOf(x[0].id) >= 0 ? " 📌" : "") + "</figcaption>" + (typeof i === "number" ? '<button type="button" class="cambiar" data-cambiar="' + x[2] + '" data-i="' + i + '">↻ Cambiar</button>' : "") + "</figure>";
     });
     h += "</div>";
     h += '<div class="conj-nombres">' + piezas.map(function (x) { return esc(x[0].nombre); }).join(" · ") + "</div>";
@@ -2851,9 +2851,25 @@
     return C.ocasion || "Ocasión especial";
   }
   function fechaOcasion() { return C.modo === "ocasion" && C.ocasionFecha && C.ocasionFecha !== fechaHoy(0) ? C.ocasionFecha : ""; }
+  function pintarObligadas() {
+    var sel = $("selObligada"), ya = C.obligadas || [];
+    var h = '<option value="">' + (ya.length ? "➕ Añadir otra prenda…" : "Ninguna (añade una prenda)") + "</option>";
+    var grupos = {};
+    S.inv.prendas.filter(function (p) { return p.estado !== "devuelta" && ya.indexOf(p.id) < 0; }).forEach(function (p) { (grupos[p.categoria] = grupos[p.categoria] || []).push(p); });
+    Object.keys(grupos).sort().forEach(function (g) {
+      h += '<optgroup label="' + esc(g) + '">' + grupos[g].map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.nombre + (p.color ? " · " + p.color : "") + (p.talla ? " · " + p.talla : "")) + "</option>"; }).join("") + "</optgroup>";
+    });
+    sel.innerHTML = h;
+    $("chipsObligadas").innerHTML = ya.map(function (id) {
+      var p = S.inv.prendas.find(function (x) { return x.id === id; });
+      return '<button type="button" class="chip" data-quitarob="' + esc(id) + '" style="border:1px solid var(--linea);background:var(--salvia-claro);border-radius:16px;padding:6px 12px;font-size:14px">📌 ' + esc(p.nombre) + " ✕</button>";
+    }).join("");
+    var nombres = ya.map(function (id) { var p = S.inv.prendas.find(function (x) { return x.id === id; }); return "«" + p.nombre + "»"; });
+    $("notaObligada").textContent = ya.length ? "Los looks llevarán " + nombres.join(" + ") + ". Pulsa «Crear conjuntos»." : "Elige una o varias prendas y te propongo looks que las lleven, completando el resto.";
+  }
   function pintarControlesConjuntos() {
-    if (C.obligada && !S.inv.prendas.some(function (x) { return x.id === C.obligada; })) C.obligada = "";
-    $("selObligada").innerHTML = opcionesPrendas(null, C.obligada, "Ninguna");
+    C.obligadas = (C.obligadas || []).filter(function (id) { return S.inv.prendas.some(function (x) { return x.id === id; }); });
+    pintarObligadas();
     pintarPares($("segQuien"), [["proponer", "Que me propongas looks"], ["mio", "Crear el mío"]], C.quien);
     $("bloqueProponer1").hidden = $("bloqueProponer2").hidden = C.quien === "mio";
     $("panelMio").hidden = C.quien !== "mio";
@@ -3100,11 +3116,11 @@
     if (!ev) { toast("Esa prenda no encaja con el resto del look"); return; }
     var kNuevo = claveIds([it2.arriba, it2.abajo, it2.uno, it2.capa, it2.capa2].filter(Boolean).map(function (p) { return p.id; }));
     if (C.resultados.some(function (r, j) { return j !== i && claveIds([r.it.arriba, r.it.abajo, r.it.uno, r.it.capa, r.it.capa2].filter(Boolean).map(function (p) { return p.id; })) === kNuevo; })) { toast("Con ese cambio quedaría igual que otra propuesta"); return; }
-    var ex = explicar(ev, ctx), obl = o.obligada;
+    var ex = explicar(ev, ctx), obl = o.obligadas || [];
     o.it = it2; o.ids = ev.ids; o.score = ev.score; o.nivel = ev.nivel; o.nov = ev.nov;
     o.razones = ex.razones; o.avisos = reglasAvisos(it2, ev.nivel).avisos.concat(ex.avisos);
     o.razones.unshift("Has cambiado una prenda de la propuesta original.");
-    if (obl && !o.ids.some(function (x) { return x === obl; })) o.obligada = "";
+    o.obligadas = obl.filter(function (id) { return o.ids.indexOf(id) >= 0; });
     var cards = $("resultados").querySelectorAll(".conj");
     if (cards[i]) { cards[i].outerHTML = htmlConjunto(o, i); cargarMinis($("resultados")); }
   }
@@ -3265,9 +3281,12 @@
       C.quien = b.getAttribute("data-v"); pintarControlesConjuntos();
     });
     $("selObligada").addEventListener("change", function () {
-      C.obligada = $("selObligada").value; C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos";
-      var p = C.obligada && S.inv.prendas.find(function (x) { return x.id === C.obligada; });
-      $("notaObligada").textContent = p ? "Los looks llevarán «" + p.nombre + "». Pulsa «Crear conjuntos»." : "Elige una prenda y te propongo looks que la lleven.";
+      var v = $("selObligada").value; if (!v) return;
+      C.obligadas = (C.obligadas || []).concat(v); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarObligadas();
+    });
+    $("chipsObligadas").addEventListener("click", function (e) {
+      var q = e.target.closest("[data-quitarob]"); if (!q) return;
+      C.obligadas = (C.obligadas || []).filter(function (id) { return id !== q.getAttribute("data-quitarob"); }); C.vistos = {}; $("btnCrear").textContent = "Crear conjuntos"; pintarObligadas();
     });
     $("mioSlots").addEventListener("click", function (e) {
       var q = e.target.closest("[data-quitar]"); if (q) { C.mio[q.getAttribute("data-quitar")] = ""; pintarMio(); return; }
@@ -3346,7 +3365,7 @@
       if (acc === "devuelta") marcarDevuelta(id);
       if (acc === "ver") abrirDetalle(id);
       if (acc === "favconj") guardarConjuntoComprado(id);
-      if (acc === "looks") { cerrarDetalle(); C.obligada = id; C.quien = "proponer"; C.vistos = {}; irA("conjuntos"); $("btnCrear").textContent = "Crear conjuntos"; setTimeout(function () { $("selObligada").value = id; crearConjuntos(); }, 50); }
+      if (acc === "looks") { cerrarDetalle(); C.obligadas = [id]; C.quien = "proponer"; C.vistos = {}; irA("conjuntos"); $("btnCrear").textContent = "Crear conjuntos"; setTimeout(function () { pintarObligadas(); crearConjuntos(); }, 50); }
       if (acc === "editar") {
         var p = S.inv.prendas.find(function (x) { return x.id === id; });
         cerrarDetalle(); prepararFormulario(p); irA("anadir");
