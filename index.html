@@ -1040,7 +1040,7 @@
 
   // ---- Sugerencias al escribir el nombre de la prenda
   var VOC_PRENDAS = ["camiseta", "body", "pantalón", "sudadera", "jersey", "chaqueta", "peto", "pijama", "rebeca", "camisa", "chaleco", "abrigo", "calcetines", "calcetas", "gorro", "zapatos", "mono", "vestido", "bufanda", "pantalón corto", "ranita"];
-  var VOC_DETALLES = ["manga larga", "manga corta", "sin mangas", "cuello redondo", "cuello alto", "cuello pico", "de rayas", "de lunares", "de cuadros", "estampado", "con dibujo", "liso", "con capucha", "con botones", "con cremallera", "con bolsillos", "de punto", "de felpa", "vaquero", "de pana", "de algodón", "de lana", "polar", "acolchado", "con volantes", "con estampado", "con letras", "de fiesta", "de vestir", "de chándal"];
+  var VOC_DETALLES = ["cuello panadero", "cuello mao", "manga larga", "manga corta", "sin mangas", "cuello redondo", "cuello alto", "cuello pico", "de rayas", "de lunares", "de cuadros", "estampado", "con dibujo", "liso", "con capucha", "con botones", "con cremallera", "con bolsillos", "de punto", "de felpa", "vaquero", "de pana", "de algodón", "de lana", "polar", "acolchado", "con volantes", "con estampado", "con letras", "de fiesta", "de vestir", "de chándal"];
   function femenino(texto) { var w = norm(texto).trim().split(/\s+/)[0] || ""; return /(a|ana|eta|era|isa)$/.test(w) && !/^(pijama|body|peto|mono|gorro|abrigo|jersey|chaleco|pantalon)$/.test(w); }
   function sugerenciasNombre(val) {
     var vacio = !val.trim(), finEsp = /\s$/.test(val), frag = (vacio || finEsp) ? "" : val.split(/\s+/).pop(), prefijo = val.slice(0, val.length - frag.length);
@@ -1369,6 +1369,14 @@
   }
   // Prenda "de vestir": la que has marcado tú o, si no has dicho nada, la que tiene estilo arreglado
   function esDeVestir(p) { return p.vestir === true || (p.vestir === undefined && estiloDe(p) === 2); }
+  // Cuellos especiales (panadero, mao, cisne...): no van con sudaderas ni con pantalón de chándal. El cuello redondo normal sí.
+  function cuelloEspecial(p) { return !!p && /panader|\bmao\b|cisne|cuello alto|cuello vuelto|cuello perkins|perkins|bobo|peter pan|volante|\blazo|halter|camisero|tortuga/.test(textoPrenda(p)); }
+  function esChandalAbajo(p) { return !!p && (estiloDe(p) === 0 || /chandal|jogger|deportiv|running|futbol/.test(textoPrenda(p))); }
+  function cuelloChoca(it) {
+    if (!cuelloEspecial(it.arriba)) return false;
+    var sud = [it.capa, it.capa2].some(function (c) { return c && c.categoria === "Sudaderas"; });
+    return sud || esChandalAbajo(it.abajo);
+  }
   function esVaquera(p) { return /vaquer|denim|tejan|\bjeans?\b/.test(textoPrenda(p)); }
   function esEstampada(p) { return /rayas|estampad|cuadros|lunares|flores|dibujo|print|vichy|tartan/.test(textoPrenda(p)); }
 
@@ -1518,6 +1526,7 @@
     var ropaEst = [it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(Boolean).map(estiloDe);
     var maxEst = Math.max.apply(null, ropaEst);
     if (maxEst - Math.min.apply(null, ropaEst) >= 2) { ctx.rechEstilo++; return null; }
+    if (cuelloChoca(it)) { ctx.rechEstilo++; return null; }
     // Nunca dos prendas vaqueras juntas (vaquero con chaqueta vaquera)
     if ([it.arriba, it.abajo, it.uno, it.capa, it.capa2].filter(function (p) { return p && esVaquera(p); }).length >= 2) { ctx.rechVaquero++; return null; }
     var penEstilo = (it.calzado && Math.abs(estiloDe(it.calzado) - maxEst) >= 2) ? 0.12 : 0;
@@ -1708,11 +1717,21 @@
 
     cand.sort(function (a, b) { return b.score - a.score; });
     var elegidos = [];
-    // Hasta 8 propuestas, de la que mejor pega a la que menos; distintas entre sí (al menos 2 prendas de diferencia, y si no hay más, 1).
+    // Hasta 8 propuestas distintas: se comparan SOLO las prendas de ropa (no zapatos ni complementos), por id y por aspecto (nombre+color),
+    // y nunca se admite un look cuya ropa sea la misma o esté contenida en otro.
+    function ropaIds(c) { return [c.it.arriba, c.it.abajo, c.it.uno, c.it.capa, c.it.capa2].filter(Boolean).map(function (p) { return p.id; }); }
+    function firma(c) { return [c.it.arriba, c.it.abajo, c.it.uno, c.it.capa, c.it.capa2].filter(Boolean).map(function (p) { return norm(p.nombre || "") + "/" + (p.color || ""); }).sort().join("|"); }
+    function distinto(c, e, minDif) {
+      var a = ropaIds(c), b = ropaIds(e);
+      if (firma(c) === firma(e)) return false;
+      var d1 = a.filter(function (id) { return b.indexOf(id) < 0; }).length, d2 = b.filter(function (id) { return a.indexOf(id) < 0; }).length;
+      if (d1 === 0 && d2 === 0) return false;   // mismo conjunto entero: nunca
+      return Math.max(d1, d2) >= minDif;   // primero se prefieren los más distintos; después se permite repetir prendas sueltas
+    }
     [2, 1].forEach(function (minDif) {
       cand.forEach(function (c) {
         if (elegidos.length >= 8 || elegidos.indexOf(c) >= 0) return;
-        if (elegidos.every(function (e) { return c.ids.filter(function (id) { return e.ids.indexOf(id) < 0; }).length >= minDif; })) elegidos.push(c);
+        if (elegidos.every(function (e) { return distinto(c, e, minDif); })) elegidos.push(c);
       });
     });
     elegidos.sort(function (a, b) { return b.score - a.score; });
@@ -2966,6 +2985,7 @@
     if (it.capa2 && !it.capa) g("El abrigo extra solo tiene sentido sobre una sudadera o un jersey. Si es tu única capa, ponlo en «Capa».");
     if (it.capa2 && it.capa && (nv < 4 || !esCapaGruesa(it.capa2) || it.capa2.categoria !== "Abrigos y chaquetas")) g("Sobre una sudadera o un jersey no suele ir nada más, salvo un abrigo grueso cuando hace mucho frío.");
     if (it.capa && !capaPunto && it.capa2) { /* ya avisado arriba */ }
+    if (cuelloChoca(it)) g("Una camiseta con cuello especial (panadero, mao...) no pega con sudadera ni con pantalón de chándal.");
     if (it.calcetin && it.calcetin.categoria === "Calcetas y leotardos" && !piernaCorta(it)) g("Las calcetas y leotardos solo suelen ir con pantalón corto, peto corto, falda o vestido.");
     ropa.concat(it.calzado ? [it.calzado] : []).forEach(function (p) {
       if (sc(p, nv) <= 0) av.push("«" + p.nombre + "» no es para un día de " + NIVEL_NOMBRE[nv] + " (es de " + (p.temporada || "otra época") + ").");
@@ -3075,6 +3095,8 @@
     it2[slot] = p ? prendaEf(p) : null;
     var ctx = Object.assign({}, C.ctxGen, { sinRuido: true, rechEstilo: 0, rechVaquero: 0 }), ev = evaluar(it2, ctx);
     if (!ev) { toast("Esa prenda no encaja con el resto del look"); return; }
+    var kNuevo = claveIds([it2.arriba, it2.abajo, it2.uno, it2.capa, it2.capa2].filter(Boolean).map(function (p) { return p.id; }));
+    if (C.resultados.some(function (r, j) { return j !== i && claveIds([r.it.arriba, r.it.abajo, r.it.uno, r.it.capa, r.it.capa2].filter(Boolean).map(function (p) { return p.id; })) === kNuevo; })) { toast("Con ese cambio quedaría igual que otra propuesta"); return; }
     var ex = explicar(ev, ctx), obl = o.obligada;
     o.it = it2; o.ids = ev.ids; o.score = ev.score; o.nivel = ev.nivel; o.nov = ev.nov;
     o.razones = ex.razones; o.avisos = reglasAvisos(it2, ev.nivel).avisos.concat(ex.avisos);
